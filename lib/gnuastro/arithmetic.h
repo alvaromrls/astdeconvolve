@@ -62,11 +62,12 @@ __BEGIN_C_DECLS  /* From C++ preparations */
 
 
 /* Arithmetic on-off bit flags (have to be powers of 2).  */
-#define GAL_ARITHMETIC_FLAG_INPLACE  1
-#define GAL_ARITHMETIC_FLAG_FREE     2
-#define GAL_ARITHMETIC_FLAG_NUMOK    4
-#define GAL_ARITHMETIC_FLAG_ENVSEED  8
-#define GAL_ARITHMETIC_FLAG_QUIET    16
+#define GAL_ARITHMETIC_FLAG_INPLACE          1
+#define GAL_ARITHMETIC_FLAG_FREE             2
+#define GAL_ARITHMETIC_FLAG_NUMOK            4
+#define GAL_ARITHMETIC_FLAG_ENVSEED          8
+#define GAL_ARITHMETIC_FLAG_QUIET            16
+#define GAL_ARITHMETIC_FLAG_OVERFLOW_CHECK   32
 
 #define GAL_ARITHMETIC_FLAGS_BASIC ( GAL_ARITHMETIC_FLAG_INPLACE   \
                                      | GAL_ARITHMETIC_FLAG_FREE    \

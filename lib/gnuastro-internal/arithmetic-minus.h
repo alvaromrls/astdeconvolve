@@ -24,6 +24,7 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 #define __ARITHMETIC_MINUS_H__
 
 void
-arithmetic_minus(gal_data_t *l, gal_data_t *r, gal_data_t *o);
+arithmetic_minus(gal_data_t *l, gal_data_t *r, gal_data_t *o,
+                 int checkoverflow);
 
 #endif

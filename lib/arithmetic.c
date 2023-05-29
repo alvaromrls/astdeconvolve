@@ -2266,26 +2266,39 @@ arithmetic_binary(int operator, int flags, gal_data_t *l, gal_data_t *r)
      macros, their compilation can be very large if they are in a single
      function and file. So there is a separate C source and header file for
      each of these functions. */
+
   switch(operator)
     {
-    case GAL_ARITHMETIC_OP_PLUS:     arithmetic_plus(l, r, o);     break;
-    case GAL_ARITHMETIC_OP_MINUS:    arithmetic_minus(l, r, o);    break;
-    case GAL_ARITHMETIC_OP_MULTIPLY: arithmetic_multiply(l, r, o); break;
-    case GAL_ARITHMETIC_OP_DIVIDE:   arithmetic_divide(l, r, o);   break;
-    case GAL_ARITHMETIC_OP_LT:       arithmetic_lt(l, r, o);       break;
-    case GAL_ARITHMETIC_OP_LE:       arithmetic_le(l, r, o);       break;
-    case GAL_ARITHMETIC_OP_GT:       arithmetic_gt(l, r, o);       break;
-    case GAL_ARITHMETIC_OP_GE:       arithmetic_ge(l, r, o);       break;
-    case GAL_ARITHMETIC_OP_EQ:       arithmetic_eq(l, r, o);       break;
-    case GAL_ARITHMETIC_OP_NE:       arithmetic_ne(l, r, o);       break;
-    case GAL_ARITHMETIC_OP_AND:      arithmetic_and(l, r, o);      break;
-    case GAL_ARITHMETIC_OP_OR:       arithmetic_or(l, r, o);       break;
-    case GAL_ARITHMETIC_OP_BITAND:   arithmetic_bitand(l, r, o);   break;
-    case GAL_ARITHMETIC_OP_BITOR:    arithmetic_bitor(l, r, o);    break;
-    case GAL_ARITHMETIC_OP_BITXOR:   arithmetic_bitxor(l, r, o);   break;
-    case GAL_ARITHMETIC_OP_BITLSH:   arithmetic_bitlsh(l, r, o);   break;
-    case GAL_ARITHMETIC_OP_BITRSH:   arithmetic_bitrsh(l, r, o);   break;
-    case GAL_ARITHMETIC_OP_MODULO:   arithmetic_modulo(l, r, o);   break;
+    case GAL_ARITHMETIC_OP_PLUS:
+      arithmetic_plus(    l, r, o,
+                          flags & GAL_ARITHMETIC_FLAG_OVERFLOW_CHECK);
+      break;
+    case GAL_ARITHMETIC_OP_MINUS:
+      arithmetic_minus(   l, r, o,
+                          flags & GAL_ARITHMETIC_FLAG_OVERFLOW_CHECK);
+      break;
+    case GAL_ARITHMETIC_OP_MULTIPLY:
+      arithmetic_multiply(l, r, o,
+                          flags & GAL_ARITHMETIC_FLAG_OVERFLOW_CHECK);
+      break;
+    case GAL_ARITHMETIC_OP_DIVIDE:
+      arithmetic_divide(  l, r, o,
+                          flags & GAL_ARITHMETIC_FLAG_OVERFLOW_CHECK);
+      break;
+    case GAL_ARITHMETIC_OP_LT:       arithmetic_lt(l, r, o);     break;
+    case GAL_ARITHMETIC_OP_LE:       arithmetic_le(l, r, o);     break;
+    case GAL_ARITHMETIC_OP_GT:       arithmetic_gt(l, r, o);     break;
+    case GAL_ARITHMETIC_OP_GE:       arithmetic_ge(l, r, o);     break;
+    case GAL_ARITHMETIC_OP_EQ:       arithmetic_eq(l, r, o);     break;
+    case GAL_ARITHMETIC_OP_NE:       arithmetic_ne(l, r, o);     break;
+    case GAL_ARITHMETIC_OP_AND:      arithmetic_and(l, r, o);    break;
+    case GAL_ARITHMETIC_OP_OR:       arithmetic_or(l, r, o);     break;
+    case GAL_ARITHMETIC_OP_BITAND:   arithmetic_bitand(l, r, o); break;
+    case GAL_ARITHMETIC_OP_BITOR:    arithmetic_bitor(l, r, o);  break;
+    case GAL_ARITHMETIC_OP_BITXOR:   arithmetic_bitxor(l, r, o); break;
+    case GAL_ARITHMETIC_OP_BITLSH:   arithmetic_bitlsh(l, r, o); break;
+    case GAL_ARITHMETIC_OP_BITRSH:   arithmetic_bitrsh(l, r, o); break;
+    case GAL_ARITHMETIC_OP_MODULO:   arithmetic_modulo(l, r, o); break;
     default:
       error(EXIT_FAILURE, 0, "%s: a bug! please contact us at %s to address "
             "the problem. %d is not a valid operator code", __func__,
