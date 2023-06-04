@@ -23,7 +23,7 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 #ifndef __ARITHMETIC_PLUS_H__
 #define __ARITHMETIC_PLUS_H__
 
-void
+int
 arithmetic_plus(gal_data_t *l, gal_data_t *r, gal_data_t *o,
                 int checkoverflow);
 

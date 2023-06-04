@@ -83,6 +83,19 @@ struct argp_option program_options[] =
       GAL_OPTIONS_NOT_MANDATORY,
       GAL_OPTIONS_NOT_SET
     },
+    {
+      "overflowcheck",
+      UI_KEY_OVERFLOWCHECK,
+      0,
+      0,
+      "Check if overflow or underflow occurred.",
+      GAL_OPTIONS_GROUP_INPUT,
+      &p->overflowcheck,
+      GAL_OPTIONS_NO_ARG_TYPE,
+      GAL_OPTIONS_RANGE_0_OR_1,
+      GAL_OPTIONS_NOT_MANDATORY,
+      GAL_OPTIONS_NOT_SET
+    },
 
 
 

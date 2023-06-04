@@ -42,7 +42,7 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
    compilation will be very slow. Therefore, for each operator we have
    defined a separate '.c' file so they are built separately and when built
    in parallel can be much faster than having them all in a single file. */
-void
+int
 arithmetic_minus(gal_data_t *l, gal_data_t *r, gal_data_t *o,
                  int checkoverflow)
 {
@@ -53,5 +53,5 @@ arithmetic_minus(gal_data_t *l, gal_data_t *r, gal_data_t *o,
                    : ARITHMETIC_BINARY_OUT_TYPE_RIGHT ), -,
                  OVERFLOW_POSSIBLE, MINUS );
 
-  if(overflows) error(EXIT_SUCCESS, 0, "Overflow. Operation: -.");
+  return overflows;
 }

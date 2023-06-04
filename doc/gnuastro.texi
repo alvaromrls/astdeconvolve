@@ -37597,7 +37597,7 @@ So first we will review the constants for the recognized flags and operators and
 @deffnx Macro GAL_ARITHMETIC_FLAG_NUMOK
 @deffnx Macro GAL_ARITHMETIC_FLAG_ENVSEED
 @deffnx Macro GAL_ARITHMETIC_FLAG_QUIET
-@deffnx Macro GAL_ARITHMETIC_FLAG_OVERFLOW_CHECK
+@deffnx Macro GAL_ARITHMETIC_FLAG_OVERFLOW
 @deffnx Macro GAL_ARITHMETIC_FLAGS_BASIC
 @cindex Bitwise Or
 Bit-wise flags to pass onto @code{gal_arithmetic} (see below).
@@ -37626,7 +37626,7 @@ Do not print any warnings or messages for operators that may benefit from it.
 For example, by default the @code{mknoise-sigma} operator prints the random number generator function and seed that it used (in case the user wants to reproduce this result later).
 By activating this bit flag to the call, that extra information is not printed on the command-line.
 
-@item GAL_ARITHMETIC_FLAG_OVERFLOW_CHECK
+@item GAL_ARITHMETIC_FLAG_OVERFLOW
 Print a warning message when an overflow is detected for the +, -, x, and / operators.
 This warning message is not suppressed by @code{GAL_ARITHMETIC_FLAG_QUIET}.
 

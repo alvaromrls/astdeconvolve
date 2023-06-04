@@ -1450,8 +1450,9 @@ arithmetic_operator_run(struct arithmeticparams *p, int operator,
   gal_data_t *d1=NULL, *d2=NULL, *d3=NULL, *d4=NULL;
 
   /* Set the operating-mode flags if necessary. */
-  if(p->cp.quiet) flags |= GAL_ARITHMETIC_FLAG_QUIET;
-  if(p->envseed)  flags |= GAL_ARITHMETIC_FLAG_ENVSEED;
+  if(p->cp.quiet)      flags |= GAL_ARITHMETIC_FLAG_QUIET;
+  if(p->envseed)       flags |= GAL_ARITHMETIC_FLAG_ENVSEED;
+  if(p->overflowcheck) flags |= GAL_ARITHMETIC_FLAG_OVERFLOW;
 
   /* If this operator is in the library, we should pop everything here.  */
   if(inlib)

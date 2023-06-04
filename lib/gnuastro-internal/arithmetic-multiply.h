@@ -23,7 +23,7 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 #ifndef __ARITHMETIC_MULTIPLY_H__
 #define __ARITHMETIC_MULTIPLY_H__
 
-void
+int
 arithmetic_multiply(gal_data_t *l, gal_data_t *r, gal_data_t *o,
                     int checkoverflow);
 

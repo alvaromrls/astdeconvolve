@@ -92,6 +92,7 @@ struct arithmeticparams
 
   /* Internal: */
   uint8_t          envseed;  /* To setup the random number generator.   */
+  uint8_t    overflowcheck;  /* Check if overflow/underflow occurred.   */
   struct operand *operands;  /* The operands linked list.               */
   int     outnamerequested;  /* ==1 if the user has given '--otuput'.   */
   time_t           rawtime;  /* Starting time of the program.           */

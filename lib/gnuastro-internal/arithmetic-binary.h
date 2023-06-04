@@ -5,6 +5,7 @@ This is part of GNU Astronomy Utilities (Gnuastro) package.
 Original author:
      Mohammad Akhlaghi <mohammad@akhlaghi.org>
 Contributing author(s):
+     Siyang He <siyang.he.uw@gmail.com>
 Copyright (C) 2015-2023 Free Software Foundation, Inc.
 
 Gnuastro is free software: you can redistribute it and/or modify it
@@ -67,13 +68,9 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
     case GAL_TYPE_FLOAT64:                                       \
       /* Signed subtraction can underflow or overflow */         \
       if(lval>0 && rval<0)                                       \
-        {                                                        \
-          if(rval<lval-max) overflows=1;                         \
-        }                                                        \
+        { if(rval<lval-max) overflows=1; }                       \
       else if(lval<0 && rval>0)                                  \
-        {                                                        \
-          if(lval<min+rval) overflows=1;                         \
-        }                                                        \
+        { if(lval<min+rval) overflows=1; }                       \
       break;                                                     \
     default:                                                     \
       error(EXIT_FAILURE, 0, "%s: type code %d not recognized",  \
@@ -93,24 +90,22 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
     case GAL_TYPE_INT64:                                            \
     case GAL_TYPE_FLOAT32:                                          \
     case GAL_TYPE_FLOAT64:                                          \
-      /* Only perform the "<-1" checks for signed types.            \
-          Reason: due to wrapping, almost all unsigned values       \
-          are less than -1, so there would be many false            \
-          positives. */                                             \
+      /* Only perform the "<-1" checks for signed types.     */     \
+      /* Reason: due to wrapping, almost all unsigned values */     \
+      /* are less than -1, so there would be many false      */     \
+      /* positives. */                                              \
       if(lval<-1)                                                   \
         {                                                           \
-          /* When lval and rval are integers, max/lval and          \
-              min/lval both truncate towards zero (rather           \
-              than truncating down), which is exactly what          \
-              we need for an upper/lower limit on rval. */          \
+          /* When lval and rval are integers, max/lval and */       \
+          /* min/lval both truncate towards zero (rather */         \
+          /* than truncating down), which is exactly what */        \
+          /* we need for an upper/lower limit on rval. */           \
           if(rval<max/lval || rval>min/lval) overflows=1;           \
         }                                                           \
       if(rval<-1)                                                   \
-        {                                                           \
-          if(lval<max/rval || lval>min/rval) overflows=1;           \
-        }                                                           \
-      /* Don't break here, because the ">1" checks below            \
-          also apply to signed types. */                            \
+        { if(lval<max/rval || lval>min/rval) overflows=1; }         \
+      /* Don't break here, because the ">1" checks below */         \
+      /* also apply to signed types. */                             \
     case GAL_TYPE_UINT8:                                            \
     case GAL_TYPE_UINT16:                                           \
     case GAL_TYPE_UINT32:                                           \
@@ -136,9 +131,8 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 #define OVERFLOW_CHECK_DIVIDE(OP, OT_UPPER)                         \
   switch(o->type)                                                   \
     {                                                               \
-    /* Integer divisions cannot overflow unless the                 \
-       divisor is zero, and division by zero is                     \
-       already handled elsewhere. */                                \
+    /* Integer divisions cannot overflow unless the divisor is */   \
+    /* zero, and division by zero is already handled elsewhere.*/   \
     case GAL_TYPE_UINT8:                                            \
     case GAL_TYPE_UINT16:                                           \
     case GAL_TYPE_UINT32:                                           \
@@ -150,13 +144,9 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
     case GAL_TYPE_FLOAT32:                                          \
     case GAL_TYPE_FLOAT64:                                          \
       if(rval>0 && rval<1)                                          \
-        {                                                           \
-          if(lval>max*rval || lval<min*rval) overflows=1;           \
-        }                                                           \
+        { if(lval>max*rval || lval<min*rval) overflows=1; }         \
       if(rval<0 && rval>-1)                                         \
-        {                                                           \
-          if(lval<max*rval || lval>min*rval) overflows=1;           \
-        }                                                           \
+        { if(lval<max*rval || lval>min*rval) overflows=1; }         \
       break;                                                        \
     default:                                                        \
       error(EXIT_FAILURE, 0, "%s: type code %d not recognized",     \

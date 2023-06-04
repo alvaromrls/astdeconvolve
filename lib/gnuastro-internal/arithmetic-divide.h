@@ -23,7 +23,7 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 #ifndef __ARITHMETIC_DIVIDE_H__
 #define __ARITHMETIC_DIVIDE_H__
 
-void
+int
 arithmetic_divide(gal_data_t *l, gal_data_t *r, gal_data_t *o,
                   int checkoverflow);
 

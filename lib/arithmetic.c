@@ -2125,68 +2125,6 @@ arithmetic_binary_out_type(int operator, gal_data_t *l, gal_data_t *r)
 
 
 
-/* Binary arithmetic's type checks: According to C's implicity/automatic
-   type conversion in binary operators, the unsigned types have higher
-   precedence for the same width. See the description of
-   'gal_type_string_to_number' in the Gnuastro book for an example.
-
-   To avoid this situation, it is therefore necessary to print a message
-   and let the user know that strange situations like above may occur. Just
-   note that this won't happen if 'a' and 'b' have different widths: such
-   that this will work fine: 'int8_t a=-1; uint16_t b=50000'. */
-static void
-arithmetic_binary_int_sanity_check(gal_data_t *l, gal_data_t *r,
-                                   int operator)
-{
-  /* Variables to simplify the checks. */
-  int l_is_signed=0, r_is_signed=0;
-
-  /* Warning only necessary for same-width types. */
-  if( gal_type_sizeof(l->type)==gal_type_sizeof(r->type) )
-    {
-      /* Warning not needed when one of the inputs is a float. */
-      if(    l->type==GAL_TYPE_FLOAT32 || l->type==GAL_TYPE_FLOAT64
-          || r->type==GAL_TYPE_FLOAT32 || r->type==GAL_TYPE_FLOAT64 )
-        return;
-      else
-        {
-          /* Warning not needed if both have (or don't have) a sign. */
-          if(    l->type==GAL_TYPE_INT8  || l->type==GAL_TYPE_INT16
-              || l->type==GAL_TYPE_INT32 || l->type==GAL_TYPE_INT64 )
-            l_is_signed=1;
-          if(    r->type==GAL_TYPE_INT8  || r->type==GAL_TYPE_INT16
-              || r->type==GAL_TYPE_INT32 || r->type==GAL_TYPE_INT64 )
-            r_is_signed=1;
-          if( l_is_signed!=r_is_signed )
-            error(EXIT_SUCCESS, 0, "warning: the two integer operands "
-                  "given to '%s' have the same width (number of bits), "
-                  "but a different sign: the first popped operand (that "
-                  "is closer to the operator, or the \"right\" operand) "
-                  "has type '%s' and the second (or \"left\" operand) "
-                  "has type '%s'. This may create wrong results, for "
-                  "example when the signed input contains negative "
-                  "values. To address this problem there are two "
-                  "options: 1) if you know that the signed input can "
-                  "only have positive values, use Arithmetic's type "
-                  "conversion operators to convert it to an un-signed "
-                  "type of the same width (e.g., 'uint8', 'uint16', "
-                  "'uint32' or 'uint64'). 2) Convert the unsigned "
-                  "input to a signed one of the next largest width "
-                  "using the type conversion operators (e.g., 'int16', "
-                  "'int32' or 'int64'). For more, see the \"Integer "
-                  "benefits and pitfalls\" section of Gnuastro's "
-                  "manual with this command: 'info gnuastro integer'. "
-                  "This warning can be removed with '--quiet' (or "
-                  "'-q')", gal_arithmetic_operator_string(operator),
-                  gal_type_name(r->type, 1), gal_type_name(l->type, 1));
-        }
-    }
-}
-
-
-
-
-
 static gal_data_t *
 arithmetic_binary(int operator, int flags, gal_data_t *l, gal_data_t *r)
 {
@@ -2196,7 +2134,7 @@ arithmetic_binary(int operator, int flags, gal_data_t *l, gal_data_t *r)
   int32_t otype;
   gal_data_t *o=NULL;
   size_t out_size, minmapsize;
-  int quietmmap=l->quietmmap && r->quietmmap;
+  int overflows=0, quietmmap=l->quietmmap && r->quietmmap;
 
 
   /* The datasets may be empty. In this case, the output should also be
@@ -2204,8 +2142,15 @@ arithmetic_binary(int operator, int flags, gal_data_t *l, gal_data_t *r)
   if( l->size==0 || l->array==NULL || r->size==0 || r->array==NULL )
     {
       if(l->array==0 || l->array==NULL)
-        {   if(flags & GAL_ARITHMETIC_FLAG_FREE) gal_data_free(r); return l;}
-      else {if(flags & GAL_ARITHMETIC_FLAG_FREE) gal_data_free(l); return r;}
+        {
+          if(flags & GAL_ARITHMETIC_FLAG_FREE) gal_data_free(r);
+          return l;
+        }
+      else
+        {
+          if(flags & GAL_ARITHMETIC_FLAG_FREE) gal_data_free(l);
+          return r;
+        }
     }
 
 
@@ -2215,13 +2160,6 @@ arithmetic_binary(int operator, int flags, gal_data_t *l, gal_data_t *r)
     error(EXIT_FAILURE, 0, "%s: the non-number inputs to '%s' don't "
           "have the same dimension/size", __func__,
           gal_arithmetic_operator_string(operator));
-
-
-  /* Print a warning if the inputs are both integers, but have different
-     signs (the user needs to know that the output may not be what they
-     expect!).*/
-  if( (flags & GAL_ARITHMETIC_FLAG_QUIET)==0 )
-    arithmetic_binary_int_sanity_check(l, r, operator);
 
 
   /* Set the output type. For the comparison operators, the output type is
@@ -2270,20 +2208,20 @@ arithmetic_binary(int operator, int flags, gal_data_t *l, gal_data_t *r)
   switch(operator)
     {
     case GAL_ARITHMETIC_OP_PLUS:
-      arithmetic_plus(    l, r, o,
-                          flags & GAL_ARITHMETIC_FLAG_OVERFLOW_CHECK);
+      overflows=arithmetic_plus(l, r, o,
+                                flags & GAL_ARITHMETIC_FLAG_OVERFLOW);
       break;
     case GAL_ARITHMETIC_OP_MINUS:
-      arithmetic_minus(   l, r, o,
-                          flags & GAL_ARITHMETIC_FLAG_OVERFLOW_CHECK);
+      overflows=arithmetic_minus(l, r, o,
+                                 flags & GAL_ARITHMETIC_FLAG_OVERFLOW);
       break;
     case GAL_ARITHMETIC_OP_MULTIPLY:
-      arithmetic_multiply(l, r, o,
-                          flags & GAL_ARITHMETIC_FLAG_OVERFLOW_CHECK);
+      overflows=arithmetic_multiply(l, r, o,
+                                    flags & GAL_ARITHMETIC_FLAG_OVERFLOW);
       break;
     case GAL_ARITHMETIC_OP_DIVIDE:
-      arithmetic_divide(  l, r, o,
-                          flags & GAL_ARITHMETIC_FLAG_OVERFLOW_CHECK);
+      overflows=arithmetic_divide(l, r, o,
+                                  flags & GAL_ARITHMETIC_FLAG_OVERFLOW);
       break;
     case GAL_ARITHMETIC_OP_LT:       arithmetic_lt(l, r, o);     break;
     case GAL_ARITHMETIC_OP_LE:       arithmetic_le(l, r, o);     break;
@@ -2304,6 +2242,33 @@ arithmetic_binary(int operator, int flags, gal_data_t *l, gal_data_t *r)
             "the problem. %d is not a valid operator code", __func__,
             PACKAGE_BUGREPORT, operator);
     }
+
+
+  /* In case an overflow occurred, print a descriptive message for the
+     user to know what went wrong and how to fix it. */
+  if(overflows)
+    error(EXIT_SUCCESS, 0, "WARNING: an overflow or underflow occurred "
+          "during the '%s' operator! The result will BE WRONG! Overflows "
+          "occur when the result of an operation is larger than the "
+          "maximum possible value of a given type. For example, in an "
+          "8-bit signed integer this maximum value is 127. if you "
+          "run '120 10 +', an overflow will occur (because both 120 and "
+          "10 will be read as signed 8-bit integers: the smallest type "
+          "that fits them)! Other situations can occur when two numbers "
+          "of the same width (number of bits) have different signs (for "
+          "example '150 -2 +'). To avoid an overflow or underflow you "
+          "should change one of the inputs to a type that can "
+          "accommodate the largest/smallest possible value. In the first "
+          "example above, you can run '120 uint8 10 +' (the largest "
+          "value in an unsigned 8-bit integer is 257). You could also "
+          "set a larger width type, for example '120 int16 10 +', but be "
+          "careful that a 16-bit integer will take double the RAM and "
+          "storage which is significant for large images. For the second "
+          "example, since it involves negative numbers, you can only "
+          "increase the width (for example with '150 int16 -2 +'). For "
+          "more, see the \"Integer benefits and pitfalls\" section of "
+          "Gnuastro's manual (with this command: 'info gnuastro integer')",
+          gal_arithmetic_operator_string(operator));
 
 
   /* Clean up if necessary. Note that if the operation was requested to be

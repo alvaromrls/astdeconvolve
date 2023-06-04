@@ -67,10 +67,10 @@ __BEGIN_C_DECLS  /* From C++ preparations */
 #define GAL_ARITHMETIC_FLAG_NUMOK            4
 #define GAL_ARITHMETIC_FLAG_ENVSEED          8
 #define GAL_ARITHMETIC_FLAG_QUIET            16
-#define GAL_ARITHMETIC_FLAG_OVERFLOW_CHECK   32
+#define GAL_ARITHMETIC_FLAG_OVERFLOW         32
 
-#define GAL_ARITHMETIC_FLAGS_BASIC ( GAL_ARITHMETIC_FLAG_INPLACE   \
-                                     | GAL_ARITHMETIC_FLAG_FREE    \
+#define GAL_ARITHMETIC_FLAGS_BASIC ( GAL_ARITHMETIC_FLAG_INPLACE \
+                                     | GAL_ARITHMETIC_FLAG_FREE \
                                      | GAL_ARITHMETIC_FLAG_NUMOK )
 
 /* Operator fixed strings. */
