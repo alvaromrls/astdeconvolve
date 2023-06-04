@@ -93,17 +93,21 @@ libgnuastro_la_SOURCES = \
   arithmetic-bitrsh.c \
   arithmetic-bitxor.c \
   arithmetic-divide.c \
+  arithmetic-divide-overflow.c \
   arithmetic-eq.c\
   arithmetic-ge.c \
   arithmetic-gt.c \
   arithmetic-le.c \
   arithmetic-lt.c \
   arithmetic-minus.c \
+  arithmetic-minus-overflow.c \
   arithmetic-modulo.c \
   arithmetic-multiply.c \
+  arithmetic-multiply-overflow.c \
   arithmetic-ne.c \
   arithmetic-or.c \
   arithmetic-plus.c \
+  arithmetic-plus-overflow.c \
   arithmetic-set.c \
   array.c \
   binary.c \
@@ -218,6 +222,7 @@ EXTRA_DIST = gnuastro.pc.in \
   $(internaldir)/arithmetic-bitrsh.h \
   $(internaldir)/arithmetic-bitxor.h \
   $(internaldir)/arithmetic-divide.h \
+  $(internaldir)/arithmetic-divide-overflow.h \
   $(internaldir)/arithmetic-eq.h  \
   $(internaldir)/arithmetic-ge.h \
   $(internaldir)/arithmetic-gt.h  \
@@ -225,11 +230,14 @@ EXTRA_DIST = gnuastro.pc.in \
   $(internaldir)/arithmetic-le.h  \
   $(internaldir)/arithmetic-lt.h \
   $(internaldir)/arithmetic-minus.h  \
+  $(internaldir)/arithmetic-minus-overflow.h  \
   $(internaldir)/arithmetic-modulo.h \
   $(internaldir)/arithmetic-multiply.h  \
+  $(internaldir)/arithmetic-multiply-overflow.h  \
   $(internaldir)/arithmetic-ne.h \
   $(internaldir)/arithmetic-or.h  \
   $(internaldir)/arithmetic-plus.h \
+  $(internaldir)/arithmetic-plus-overflow.h \
   $(internaldir)/arithmetic-set.h  \
   $(internaldir)/checkset.h \
   $(internaldir)/commonopts.h  \

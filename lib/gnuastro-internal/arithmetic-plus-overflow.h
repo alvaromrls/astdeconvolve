@@ -20,10 +20,10 @@ General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 **********************************************************************/
-#ifndef __ARITHMETIC_MULTIPLY_H__
-#define __ARITHMETIC_MULTIPLY_H__
+#ifndef __ARITHMETIC_PLUS_OVERFLOW_H__
+#define __ARITHMETIC_PLUS_OVERFLOW_H__
 
 int
-arithmetic_multiply(gal_data_t *l, gal_data_t *r, gal_data_t *o);
+arithmetic_plus_overflow(gal_data_t *l, gal_data_t *r, gal_data_t *o);
 
 #endif

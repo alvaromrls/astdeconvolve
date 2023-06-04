@@ -43,15 +43,15 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
    defined a separate '.c' file so they are built separately and when built
    in parallel can be much faster than having them all in a single file. */
 int
-arithmetic_divide(gal_data_t *l, gal_data_t *r, gal_data_t *o)
+arithmetic_multiply_overflow(gal_data_t *l, gal_data_t *r, gal_data_t *o)
 {
-  int checkoverflow=0;
+  int checkoverflow=1;
   int overflows=0, checkblank=gal_arithmetic_binary_checkblank(l, r);
 
   BINARY_SET_LT( ( o->type==l->type
                    ? ARITHMETIC_BINARY_OUT_TYPE_LEFT
-                   : ARITHMETIC_BINARY_OUT_TYPE_RIGHT ), /,
-                 OVERFLOW_POSSIBLE, DIVIDE );
+                   : ARITHMETIC_BINARY_OUT_TYPE_RIGHT ), *,
+                 OVERFLOW_POSSIBLE, MULTIPLY );
 
   return overflows;
 }

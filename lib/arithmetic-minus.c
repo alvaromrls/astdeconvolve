@@ -43,9 +43,9 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
    defined a separate '.c' file so they are built separately and when built
    in parallel can be much faster than having them all in a single file. */
 int
-arithmetic_minus(gal_data_t *l, gal_data_t *r, gal_data_t *o,
-                 int checkoverflow)
+arithmetic_minus(gal_data_t *l, gal_data_t *r, gal_data_t *o)
 {
+  int checkoverflow=0;
   int overflows=0, checkblank=gal_arithmetic_binary_checkblank(l, r);
 
   BINARY_SET_LT( ( o->type==l->type

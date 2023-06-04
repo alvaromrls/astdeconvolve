@@ -75,7 +75,10 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 #include <gnuastro-internal/arithmetic-modulo.h>
 #include <gnuastro-internal/arithmetic-divide.h>
 #include <gnuastro-internal/arithmetic-multiply.h>
-
+#include <gnuastro-internal/arithmetic-plus-overflow.h>
+#include <gnuastro-internal/arithmetic-minus-overflow.h>
+#include <gnuastro-internal/arithmetic-divide-overflow.h>
+#include <gnuastro-internal/arithmetic-multiply-overflow.h>
 
 
 
@@ -2134,6 +2137,7 @@ arithmetic_binary(int operator, int flags, gal_data_t *l, gal_data_t *r)
   int32_t otype;
   gal_data_t *o=NULL;
   size_t out_size, minmapsize;
+  int checkoverflow=flags & GAL_ARITHMETIC_FLAG_OVERFLOW;
   int overflows=0, quietmmap=l->quietmmap && r->quietmmap;
 
 
@@ -2208,20 +2212,24 @@ arithmetic_binary(int operator, int flags, gal_data_t *l, gal_data_t *r)
   switch(operator)
     {
     case GAL_ARITHMETIC_OP_PLUS:
-      overflows=arithmetic_plus(l, r, o,
-                                flags & GAL_ARITHMETIC_FLAG_OVERFLOW);
+      overflows = ( checkoverflow
+                    ? arithmetic_plus_overflow(l, r, o)
+                    : arithmetic_plus(l, r, o) );
       break;
     case GAL_ARITHMETIC_OP_MINUS:
-      overflows=arithmetic_minus(l, r, o,
-                                 flags & GAL_ARITHMETIC_FLAG_OVERFLOW);
+      overflows = ( checkoverflow
+                    ? arithmetic_minus_overflow(l, r, o)
+                    : arithmetic_minus(l, r, o) );
       break;
     case GAL_ARITHMETIC_OP_MULTIPLY:
-      overflows=arithmetic_multiply(l, r, o,
-                                    flags & GAL_ARITHMETIC_FLAG_OVERFLOW);
+      overflows = ( checkoverflow
+                    ? arithmetic_multiply_overflow(l, r, o)
+                    : arithmetic_multiply(l, r, o) );
       break;
     case GAL_ARITHMETIC_OP_DIVIDE:
-      overflows=arithmetic_divide(l, r, o,
-                                  flags & GAL_ARITHMETIC_FLAG_OVERFLOW);
+      overflows = ( checkoverflow
+                    ? arithmetic_divide_overflow(l, r, o)
+                    : arithmetic_divide(l, r, o) );
       break;
     case GAL_ARITHMETIC_OP_LT:       arithmetic_lt(l, r, o);     break;
     case GAL_ARITHMETIC_OP_LE:       arithmetic_le(l, r, o);     break;
