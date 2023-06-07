@@ -393,8 +393,8 @@ gal_error_exists_leave_func(gal_error_t **err, int lib_code,
   if(*err)
     {
       gal_error(err, lib_code, error_code, is_warning,
-                "%s: error point is not empty, will not "
-                "continue", func);
+                "%s: previous %s, will not continue", func,
+                (*err)->next ? "errors exist" : "error exists");
       return 1;
     }
   else return 0;

@@ -6,8 +6,9 @@ Original author:
      Jash Shah <jash28582@gmail.com>
 Contributing author(s):
      Mohammad Akhlaghi <mohammad@akhlaghi.org>
+     Labeeb Asari <asari.r.labeeb7@@gmail.com>
      Pedram Ashofteh-Ardakani <pedramardakani@pm.me>
-Copyright (C) 2022 Free Software Foundation, Inc.
+Copyright (C) 2022-2023 Free Software Foundation, Inc.
 
 Gnuastro is free software: you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the
@@ -60,17 +61,17 @@ __BEGIN_C_DECLS  /* From C++ preparations */
    significant 8 bits represent the library code(`lib_code`).
 
 
-                     ┌──────────────────┐
-                     │                  │
-                     │32 Bit Macro Value│
-                     │                  │
-                     └─────────┬────────┘
-                               │
-                               │
-          ┌────────────────────┼───────────────────┐
-          │                    │                   │
-     Bits 16-25           Bits 8-15           Bits 0-7
-          │                    │                   │
+                        ┌──────────────────┐
+                        │                  │
+                        │32 Bit Macro Value│
+                        │                  │
+                        └─────────┬────────┘
+                                  │
+                                  │
+             ┌────────────────────┼───────────────────┐
+             │                    │                   │
+        Bits 16-25           Bits 8-15           Bits 0-7
+             │                    │                   │
      ┌───────▼────────┐  ┌────────▼────────┐ ┌────────▼───────┐
      │   lib_code     │  │      code       │ │   is_warning   │
      │                │  │                 │ │                │
@@ -91,23 +92,19 @@ __BEGIN_C_DECLS  /* From C++ preparations */
 /* Data type for storing errors */
 typedef struct gal_error_t
 {
-  uint8_t code;              /* Code of the problem wrt to each library.*/
-  uint8_t lib_code;          /* Library which created the error.        */
-  uint8_t type;              /* Type... */
-  uint8_t is_warning;        /* Defines if the error is only a warning. */
-  char *back_msg;            /* Detailed message of backend (library)   */
-  char *front_msg;           /* Detailed message of front end (caller). */
-  struct gal_error_t *next;  /* Next error message.                     */
+  uint8_t code;             /* From 'GAL_ERROR_CODE_*' defined below.    */
+  uint8_t lib_code;         /* Library which created the error.          */
+  uint8_t is_warning;       /* Defines if the error is only a warning.   */
+  char *back_msg;           /* Message of backend (library).             */
+  char *front_msg;          /* Message of front end (caller of library). */
+  struct gal_error_t *next; /* Next error message.                       */
 } gal_error_t;
 
 
 
 
 
-/************************************************************
- **************        Library Codes          ***************
- ************************************************************/
-/* To re-generate this list, run the following command:
+/* Library codes: To re-generate this list, run the following command:
 
       $ cd lib/gnuastro
       $ ls *.h \
@@ -165,6 +162,96 @@ enum gal_error_library_codes{
 
   GAL_ERROR_LIB_NUMLIBS /* Total number of libraies */
 };
+
+
+
+
+
+/* The error codes allow high-level classification of the various
+   situations and should be specified when adding a new error on the
+   stack. The low-level details of each error are given in their
+   message/description.
+
+   Gnuastry's error codes are primarily taken from the relevant GNU C
+   Library's error codes that you can access from [1] or [2] below. The GNU
+   C Library documentation contains a more complete description of each
+   error type. Note that we are a little more loose in interpreting the
+   errors compared to the GNU C library because the context is larger here
+   (data analysis).
+
+   [1] This command: $ info libc "error codes"
+   [2] https://www.gnu.org/software/libc/manual/html_node/Error-Codes.html
+
+   If a necessary error code is not present in the GNU C Library, we can
+   add new codes here. The source that the code was inspired from should
+   just be clear in the description with the abbreviations below.
+
+     [CU]: Custom (not from any known source).
+     [PY]: https://docs.python.org/3/library/exceptions.html
+   */
+enum gal_error_codes{
+
+  /* Invalid (should be first!). */
+  GAL_ERROR_CODE_INVALID,       /* ==0 in the C standard.                */
+
+
+  /* File/directory or Input/output issues. */
+  GAL_ERROR_CODE_EIO,           /* Generic I/O (only when not in below). */
+  GAL_ERROR_CODE_EACCESS,       /* Cannot access the given location.     */
+  GAL_ERROR_CODE_ENOENT,        /* No such file or directory.            */
+  GAL_ERROR_CODE_ENXIO,         /* No such device or address.            */
+  GAL_ERROR_CODE_EFTYPE,        /* Bad file format for operation.        */
+  GAL_ERROR_CODE_EEXIST,        /* File exists (and we can't overwrite). */
+  GAL_ERROR_CODE_ENOTDIR,       /* Not a directory (but expects dir).    */
+  GAL_ERROR_CODE_EISDIR,        /* Is a directory (but expects file).    */
+  GAL_ERROR_CODE_EFBIG,         /* File is too large.                    */
+  GAL_ERROR_CODE_EOF,           /* [PY] Reached end-of-file, no content. */
+  GAL_ERROR_CODE_ENOTEMPTY,     /* Directory not empty.                  */
+  GAL_ERROR_CODE_ENODATA,       /* No data available in input file.      */
+
+  /* Input values (usually checked at the start of a function). */
+  GAL_ERROR_CODE_E2BIG,         /* Argument list is too long.            */
+  GAL_ERROR_CODE_EINVAL,        /* Invalid argument (if not in below).   */
+  GAL_ERROR_CODE_EDOM,          /* Numerical input value out of range.   */
+  GAL_ERROR_CODE_INDEX,         /* [PY] An array index is out of range.  */
+  GAL_ERROR_CODE_ENAMETOOLONG,  /* Given name is too long.               */
+  GAL_ERROR_CODE_NAME,          /* [PY] Given name is not found.         */
+  GAL_ERROR_CODE_TYPE,          /* [PY] Given type is not expected.      */
+
+  /* Requested operation. */
+  GAL_ERROR_CODE_EPERM,         /* Requested operation not permitted.    */
+  GAL_ERROR_CODE_ENOTSUPP,      /* Requested operation not supported.    */
+  GAL_ERROR_CODE_ENOSYS,        /* Requested operation not implemented.  */
+  GAL_ERROR_CODE_ESRCH,         /* No such process/function.             */
+  GAL_ERROR_CODE_EGREGIOUS,     /* The requested operation is not clear. */
+  GAL_ERROR_CODE_ENOPKG,        /* Necessary lib (package) not installed.*/
+
+  /* Output values. */
+  GAL_ERROR_CODE_ZERODIVISION,  /* Division or modulo by zero, all types.*/
+  GAL_ERROR_CODE_ERANGE,        /* Numerical output value out of range.  */
+  GAL_ERROR_CODE_EOVERFLOW,     /* Output value has overflowed.          */
+
+  /* Operational errors (in the middle of the function). */
+  GAL_ERROR_CODE_ENOMEM,        /* Cannot allocate memory.               */
+  GAL_ERROR_CODE_ETIMEDOUT,     /* Operation has taken too long.         */
+  GAL_ERROR_CODE_RECURSION,     /* [PY] Maximum depth of recursion.      */
+  GAL_ERROR_CODE_SYSTEMEXIT,    /* [PY] system()' function crashed.      */
+
+  /* External interruptions. */
+  GAL_ERROR_CODE_EINTR,         /* Interrupted system call or by signal. */
+  GAL_ERROR_CODE_ENETDOWN,      /* Network is down.                      */
+  GAL_ERROR_CODE_ENETUNREACH,   /* Network is not reachable.             */
+  GAL_ERROR_CODE_KEYBOARD,      /* [PY] Keyboard interrupt, e.g., Ctrl+C)*/
+
+
+  /* Total number of Gnuastro error types (should be last!) */
+  GAL_ERROR_CODE_NTYPES
+};
+
+
+
+
+
 
 
 
