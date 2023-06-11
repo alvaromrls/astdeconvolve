@@ -52,16 +52,6 @@ __BEGIN_C_DECLS  /* From C++ preparations */
 
 
 
-/* Error codes for this library. */
-enum gal_array_error
-{
-  GAL_ARRAY_ERROR_INVALID,      /* =0 by default. */
-  GAL_ARRAY_ERROR_BUG,          /* Unknown situation. */
-};
-
-
-
-
 /* Functions */
 int
 gal_array_name_recognized(char *name, gal_error_t **err);

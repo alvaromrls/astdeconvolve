@@ -34,22 +34,32 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 #include <gnuastro/error.h>
 #include <gnuastro/array.h>
 
-
+#include <gnuastro-internal/liberror.h>
 
 
 /*********************************************************************/
-/*****************        Error for this library      ****************/
+/*****************          Dealing with errors       ****************/
 /*********************************************************************/
-static void
-gal_array_error(gal_error_t **err, int error_code,
-                int is_warning, char *format, ...)
-{
-  va_list args;
-  va_start(args, format);
-  gal_error(err, GAL_ERROR_LIB_ARRAY, error_code,
-            is_warning, format, args);
-  va_end (args);
-}
+static int
+array_error(gal_error_t **err, int code,
+            int is_warning, char *format, ...)
+{ GAL_LIBERROR_ADD_CONTENTS(GAL_LIBERROR_CODE_ARRAY); }
+
+static int
+array_error_exists_leave(gal_error_t **err, const char *func)
+{ return gal_error_has_leave(err, GAL_LIBERROR_CODE_ARRAY, func); }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -64,16 +74,20 @@ gal_array_error(gal_error_t **err, int error_code,
 int
 gal_array_name_recognized(char *name, gal_error_t **err)
 {
+  /* If an error has already existed, leave this function. */
+  if( array_error_exists_leave(err, __func__) ) return 0;
+
+  /* Check the various types. */
   if( gal_array_name_recognized_multiext(name, err) ) return 1;
   else if ( gal_jpeg_name_is_jpeg(name)             ) return 1;
   else                                                return 0;
 
   /* Control should not get to here, but just to avoid compiler warnings,
      we'll return a NULL. */
-  gal_array_error(err, GAL_ARRAY_ERROR_BUG, 0, "%s: a bug! Please "
-                  "contact us at %s to solve the problem. Control "
-                  "must not reach the end of this function", __func__,
-                  PACKAGE_BUGREPORT);
+  array_error(err, GAL_ERROR_CODE_BUG, 0, "%s: a bug! Please "
+              "contact us at %s to solve the problem. Control "
+              "must not reach the end of this function", __func__,
+              PACKAGE_BUGREPORT);
   return 0;
 }
 
@@ -84,16 +98,20 @@ gal_array_name_recognized(char *name, gal_error_t **err)
 int
 gal_array_name_recognized_multiext(char *name, gal_error_t **err)
 {
+  /* If an error has already existed, leave this function. */
+  if( array_error_exists_leave(err, __func__) ) return 0;
+
+  /* Check the various types. */
   if(       gal_fits_name_is_fits(name) ) return 1;
   else if ( gal_tiff_name_is_tiff(name) ) return 1;
   else                                    return 0;
 
   /* Control should not get to here, but just to avoid compiler warnings,
      we'll return a NULL. */
-  gal_array_error(err, GAL_ARRAY_ERROR_BUG, 0, "%s: a bug! Please "
-                  "contact us at %s to solve the problem. Control must "
-                  "not reach the end of this function", __func__,
-                  PACKAGE_BUGREPORT);
+  array_error(err, GAL_ERROR_CODE_BUG, 0, "%s: a bug! Please "
+              "contact us at %s to solve the problem. Control must "
+              "not reach the end of this function", __func__,
+              PACKAGE_BUGREPORT);
   return 0;
 }
 
@@ -104,6 +122,7 @@ gal_array_name_recognized_multiext(char *name, gal_error_t **err)
 int
 gal_array_file_recognized(char *name)
 {
+  /* Check the different types. */
   if(       gal_fits_file_recognized(name) ) return 1;
   else if ( gal_jpeg_name_is_jpeg(name)    ) return 1;
   else if ( gal_tiff_name_is_tiff(name)    ) return 1;
@@ -143,9 +162,9 @@ gal_array_read(char *filename, char *extension, gal_list_str_t *lines,
 
   /* Control should not get to here, but just to avoid compiler warnings,
      we'll return a NULL. */
-  error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s to solve the "
-        "problem. Control must not reach the end of this function", __func__,
-        PACKAGE_BUGREPORT);
+  error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s to solve "
+        "the problem. Control must not reach the end of this function",
+        __func__, PACKAGE_BUGREPORT);
   return NULL;
 }
 
@@ -160,10 +179,10 @@ gal_array_read_to_type(char *filename, char *extension,
                        size_t minmapsize, int quietmmap)
 {
   gal_data_t *out=NULL;
-  gal_data_t *next, *in=gal_array_read(filename, extension, lines,
-                                       minmapsize, quietmmap);
+  gal_data_t *next, *in;
 
   /* Go over all the channels. */
+  in=gal_array_read(filename, extension, lines, minmapsize, quietmmap);
   while(in)
     {
       next=in->next;
@@ -183,8 +202,9 @@ gal_array_read_to_type(char *filename, char *extension,
 
 /* Read the input array and make sure it is only one channel. */
 gal_data_t *
-gal_array_read_one_ch(char *filename, char *extension, gal_list_str_t *lines,
-                      size_t minmapsize, int quietmmap)
+gal_array_read_one_ch(char *filename, char *extension,
+                      gal_list_str_t *lines, size_t minmapsize,
+                      int quietmmap)
 {
   char *fname;
   gal_data_t *out;
@@ -195,7 +215,8 @@ gal_array_read_one_ch(char *filename, char *extension, gal_list_str_t *lines,
       if(extension)
         {
           if( asprintf(&fname, "%s (hdu %s)", filename, extension)<0 )
-            error(EXIT_FAILURE, 0, "%s: asprintf allocation error", __func__);
+            error(EXIT_FAILURE, 0, "%s: asprintf allocation error",
+                  __func__);
         }
       else
         fname=filename;

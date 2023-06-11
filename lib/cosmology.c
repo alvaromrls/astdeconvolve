@@ -34,6 +34,7 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 #include <gnuastro/cosmology.h>
 
 #include <gnuastro-internal/checkset.h>
+#include <gnuastro-internal/liberror.h>
 
 #include <gsl/gsl_const_mksa.h>
 #include <gsl/gsl_integration.h>
@@ -61,8 +62,8 @@ struct cosmology_integrand_t
 
 
 /* For the GSL integrations */
-#define GSLILIMIT  1000
 #define GSLIEPSABS 0
+#define GSLILIMIT  1000
 #define GSLIEPSREL 1e-7
 
 
@@ -77,28 +78,14 @@ struct cosmology_integrand_t
 /*********************************************************************/
 /*****************        Error for this library      ****************/
 /*********************************************************************/
-static void
-cosmology_error(gal_error_t **err, int error_code,
+static int
+cosmology_error(gal_error_t **err, int code,
                 int is_warning, char *format, ...)
-{
-  va_list args;
-  va_start(args, format);
-  gal_error(err, GAL_ERROR_LIB_COSMOLOGY, error_code,
-            is_warning, format, args);
-  va_end(args);
-}
-
-
-
-
+{ GAL_LIBERROR_ADD_CONTENTS(GAL_LIBERROR_CODE_COSMOLOGY); }
 
 static int
 cosmology_error_exists_leave(gal_error_t **err, const char *func)
-{
-  return gal_error_exists_leave_func(err, GAL_ERROR_LIB_COSMOLOGY,
-                                     GAL_COSMOLOGY_ERROR_REJECTED, 0,
-                                     func);
-}
+{ return gal_error_has_leave(err, GAL_LIBERROR_CODE_COSMOLOGY, func); }
 
 
 
@@ -130,50 +117,49 @@ cosmology_sanity_check(double o_lambda_0, double o_matter_0,
                        double o_radiation_0, const char *func,
                        gal_error_t **err)
 {
+  int stat=0;
   double sum;
 
   /* If there is a prior error, signal a failure (by returning 1). */
-  if(cosmology_error_exists_leave(err, __func__)) return 1;
+  if(cosmology_error_exists_leave(err, func)) return 1;
 
   /* Check if the density fractions are between 0 and 1. */
   if(o_lambda_0 > 1 || o_lambda_0 < 0)
-    cosmology_error(err, GAL_COSMOLOGY_ERROR_LAMBDA_OUT_OF_BOUNDS,
-                    0, "%s: value to option 'olambda' must be between "
-                    "zero and one (inclusive), but the given value "
-                    "is '%.8f'. Recall that 'olambda' is the current "
-                    "cosmological constant density per critical "
-                    "density", func, o_lambda_0);
+    stat=cosmology_error(err, GAL_ERROR_CODE_EDOM, 0, "%s: value to "
+                         "option 'olambda' must be between zero and one "
+                         "(inclusive), but the given value is '%g'. "
+                         "Recall that 'olambda' is the current "
+                         "cosmological constant density per critical "
+                         "density", func, o_lambda_0);
 
   if(o_matter_0 > 1 || o_matter_0 < 0)
-    cosmology_error(err, GAL_COSMOLOGY_ERROR_MATTER_OUT_OF_BOUNDS,
-                    0, "%s: value to option 'omatter' must be "
-                    "between zero and one (inclusive), but the "
-                    "given value is '%.8f'. Recall that 'omatter' "
-                    "is 'Current matter density per critical "
-                    "density'",func, o_matter_0);
+    stat=cosmology_error(err, GAL_ERROR_CODE_EDOM, 0, "%s: value to "
+                         "option 'omatter' must be between zero and "
+                         "one (inclusive), but the given value is '%g'. "
+                         "Recall that 'omatter' is 'Current matter "
+                         "density per critical density'",func, o_matter_0);
 
   if(o_radiation_0 > 1 || o_radiation_0 < 0)
-    cosmology_error(err, GAL_COSMOLOGY_ERROR_RADIATION_OUT_OF_BOUNDS,
-                    0, "%s: value to option 'oradiation' must be "
-                    "between zero and one (inclusive), but the given "
-                    "value is '%.8f'. Recall that 'oradiation' is "
-                    "'Current radiation density per critical density",
-                    func, o_radiation_0);
+    stat=cosmology_error(err, GAL_ERROR_CODE_EDOM, 0, "%s: value to "
+                         "option 'oradiation' must be between zero and "
+                         "one (inclusive), but the given value is '%g'. "
+                         "Recall that 'oradiation' is 'Current radiation "
+                         "density per critical density", func,
+                         o_radiation_0);
 
   /* Check if the density fractions add up to 1 (within floating point
      error). */
   sum = o_lambda_0 + o_matter_0 + o_radiation_0;
   if( sum > (1+1e-8) || sum < (1-1e-8) )
-    cosmology_error(err, GAL_COSMOLOGY_ERROR_SUM_LIMIT, 0,
-                    "%s: sum of fractional densities is not 1, "
-                    "but %.8f. The cosmological constant "
-                    "('olambda'), matter ('omatter') and radiation "
-                    "('oradiation') densities are given as %.8f, "
-                    "%.8f, %.8f.", func, sum, o_lambda_0,
-                    o_matter_0, o_radiation_0);
+    stat=cosmology_error(err, GAL_ERROR_CODE_EDOM, 0, "%s: sum of "
+                         "fractional densities is not 1, but %g. The "
+                         "cosmological constant ('olambda'), matter "
+                         "('omatter') and radiation ('oradiation') "
+                         "densities are given as %g, %g, %g.", func, sum,
+                         o_lambda_0, o_matter_0, o_radiation_0);
 
-  /* If a new error was found, signal a failure (by returning 1). */
-  return *err==NULL ? 0 : 1;
+  /* If a new error was found, return non-zero. */
+  return stat ? GAL_ERROR_CODE_ERRNOTALLOC : (*err==NULL ? 0 : 1);
 }
 
 

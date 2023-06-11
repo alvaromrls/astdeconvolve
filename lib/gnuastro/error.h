@@ -2,12 +2,11 @@
 error - error handling throughout the Gnuastro library
 This is part of GNU Astronomy Utilities (Gnuastro) package.
 
-Original author:
-     Jash Shah <jash28582@gmail.com>
-Contributing author(s):
-     Mohammad Akhlaghi <mohammad@akhlaghi.org>
-     Labeeb Asari <asari.r.labeeb7@@gmail.com>
-     Pedram Ashofteh-Ardakani <pedramardakani@pm.me>
+Authors:
+     2022-2022 Jash Shah <jash28582@gmail.com>
+     2022-2023 Mohammad Akhlaghi <mohammad@akhlaghi.org>
+     2023-2023 Labeeb Asari <asari.r.labeeb7@@gmail.com>
+     2022-2022 Pedram Ashofteh-Ardakani <pedramardakani@pm.me>
 Copyright (C) 2022-2023 Free Software Foundation, Inc.
 
 Gnuastro is free software: you can redistribute it and/or modify it
@@ -44,43 +43,8 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 #endif
 /* End of C++ preparations */
 
-
-
-
-
 /* Actual header contants (the above were for the Pre-processor). */
 __BEGIN_C_DECLS  /* From C++ preparations */
-
-
-
-
-
-/* Given the `lib_code`,`code` and the `is_warning` flag of an error,
-   returns the value whose least significant 8 bits represents the
-   `is_warning` flag, next 8 bits represent the `code` and next
-   significant 8 bits represent the library code(`lib_code`).
-
-
-                        ┌──────────────────┐
-                        │                  │
-                        │32 Bit Macro Value│
-                        │                  │
-                        └─────────┬────────┘
-                                  │
-                                  │
-             ┌────────────────────┼───────────────────┐
-             │                    │                   │
-        Bits 16-25           Bits 8-15           Bits 0-7
-             │                    │                   │
-     ┌───────▼────────┐  ┌────────▼────────┐ ┌────────▼───────┐
-     │   lib_code     │  │      code       │ │   is_warning   │
-     │                │  │                 │ │                │
-     │   0000 0000    │  │    0000 0000    │ │    0000 0000   │
-     └────────────────┘  └─────────────────┘ └────────────────┘
-*/
-#define GAL_ERROR_BITSET(lib_code, code, is_warning) ((lib_code << 16) | (code << 8) | is_warning)
-
-
 
 
 
@@ -94,74 +58,10 @@ typedef struct gal_error_t
 {
   uint8_t code;             /* From 'GAL_ERROR_CODE_*' defined below.    */
   uint8_t lib_code;         /* Library which created the error.          */
-  uint8_t is_warning;       /* Defines if the error is only a warning.   */
+  uint8_t is_warning;       /* ==1: only a warning, not breaking.        */
   char *back_msg;           /* Message of backend (library).             */
-  char *front_msg;          /* Message of front end (caller of library). */
   struct gal_error_t *next; /* Next error message.                       */
 } gal_error_t;
-
-
-
-
-
-/* Library codes: To re-generate this list, run the following command:
-
-      $ cd lib/gnuastro
-      $ ls *.h \
-           | sed 's/\.h//' \
-           | awk '{printf "GAL_ERROR_LIB_%s,\n", toupper($1)}'
-
-   You can then simply copy-paste the output below (in the specified
-   region). */
-enum gal_error_library_codes{
-  GAL_ERROR_LIB_INVALID,     /* ==0: accoring to the C standard. */
-
-  /*-------------------- Output of command above --------------------*/
-  GAL_ERROR_LIB_ARITHMETIC,
-  GAL_ERROR_LIB_ARRAY,
-  GAL_ERROR_LIB_BINARY,
-  GAL_ERROR_LIB_BLANK,
-  GAL_ERROR_LIB_BOX,
-  GAL_ERROR_LIB_COLOR,
-  GAL_ERROR_LIB_CONVOLVE,
-  GAL_ERROR_LIB_COSMOLOGY,
-  GAL_ERROR_LIB_DATA,
-  GAL_ERROR_LIB_DIMENSION,
-  GAL_ERROR_LIB_DS9,
-  GAL_ERROR_LIB_EPS,
-  GAL_ERROR_LIB_ERROR,
-  GAL_ERROR_LIB_ERRORINPROGRAM,
-  GAL_ERROR_LIB_FIT,
-  GAL_ERROR_LIB_FITS,
-  GAL_ERROR_LIB_GIT,
-  GAL_ERROR_LIB_INTERPOLATE,
-  GAL_ERROR_LIB_JPEG,
-  GAL_ERROR_LIB_KDTREE,
-  GAL_ERROR_LIB_LABEL,
-  GAL_ERROR_LIB_LIST,
-  GAL_ERROR_LIB_MATCH,
-  GAL_ERROR_LIB_PDF,
-  GAL_ERROR_LIB_PERMUTATION,
-  GAL_ERROR_LIB_POINTER,
-  GAL_ERROR_LIB_POLYGON,
-  GAL_ERROR_LIB_POOL,
-  GAL_ERROR_LIB_PYTHON,
-  GAL_ERROR_LIB_QSORT,
-  GAL_ERROR_LIB_SPECLINES,
-  GAL_ERROR_LIB_STATISTICS,
-  GAL_ERROR_LIB_TABLE,
-  GAL_ERROR_LIB_THREADS,
-  GAL_ERROR_LIB_TIFF,
-  GAL_ERROR_LIB_TILE,
-  GAL_ERROR_LIB_TXT,
-  GAL_ERROR_LIB_TYPE,
-  GAL_ERROR_LIB_UNITS,
-  GAL_ERROR_LIB_WARP,
-  GAL_ERROR_LIB_WCS,
-  /*-----------------------------------------------------------------*/
-
-  GAL_ERROR_LIB_NUMLIBS /* Total number of libraies */
-};
 
 
 
@@ -231,17 +131,20 @@ enum gal_error_codes{
   GAL_ERROR_CODE_ERANGE,        /* Numerical output value out of range.  */
   GAL_ERROR_CODE_EOVERFLOW,     /* Output value has overflowed.          */
 
-  /* Operational errors (in the middle of the function). */
-  GAL_ERROR_CODE_ENOMEM,        /* Cannot allocate memory.               */
-  GAL_ERROR_CODE_ETIMEDOUT,     /* Operation has taken too long.         */
-  GAL_ERROR_CODE_RECURSION,     /* [PY] Maximum depth of recursion.      */
-  GAL_ERROR_CODE_SYSTEMEXIT,    /* [PY] system()' function crashed.      */
-
   /* External interruptions. */
   GAL_ERROR_CODE_EINTR,         /* Interrupted system call or by signal. */
   GAL_ERROR_CODE_ENETDOWN,      /* Network is down.                      */
   GAL_ERROR_CODE_ENETUNREACH,   /* Network is not reachable.             */
   GAL_ERROR_CODE_KEYBOARD,      /* [PY] Keyboard interrupt, e.g., Ctrl+C)*/
+
+  /* Operational errors (in the middle of the function). */
+  GAL_ERROR_CODE_ERRLISTFULL,   /* [CU] Error list not empty,no continue.*/
+  GAL_ERROR_CODE_ERRNOTALLOC,   /* [CU] Couldn't allocate error struct.  */
+  GAL_ERROR_CODE_BUG,           /* [CU] Unexpected situation, a bug!     */
+  GAL_ERROR_CODE_ENOMEM,        /* Cannot allocate memory.               */
+  GAL_ERROR_CODE_ETIMEDOUT,     /* Operation has taken too long.         */
+  GAL_ERROR_CODE_RECURSION,     /* [PY] Maximum depth of recursion.      */
+  GAL_ERROR_CODE_SYSTEMEXIT,    /* [PY] system()' function crashed.      */
 
 
   /* Total number of Gnuastro error types (should be last!) */
@@ -252,60 +155,38 @@ enum gal_error_codes{
 
 
 
-
-
-
-
-
 /****************************************************************
- ************************   Allocation   ************************
- ****************************************************************/
-gal_error_t *
-gal_error_allocate(uint8_t lib_code, uint8_t code, char *back_msg,
-                   uint8_t is_warning);
-
-void
-gal_error_add_back_msg(gal_error_t **err, char *back_msg,
-                       uint32_t macro_val);
-
-void
-gal_error_add_front_msg(gal_error_t **err, char *front_msg,
-                        uint8_t replace);
-
-void
-gal_error(gal_error_t **err, int lib_code, int error_code,
-          int is_warning, char *format, ...);
-
-void
-gal_error_reverse(gal_error_t **err);
-
-/****************************************************************
- *************************   Checking   *************************
- ****************************************************************/
-uint8_t
-gal_error_check(gal_error_t **err, uint32_t macro_val);
-
-int
-gal_error_exists_leave_func(gal_error_t **err, int lib_code,
-                            int error_code, int is_warning,
-                            const char *func);
-
-void
-gal_error_parse_macro(uint32_t macro_val, uint8_t *lib_code, uint8_t *code,
-                      uint8_t *is_warning);
-
-uint8_t
-gal_error_occurred(gal_error_t *err);
-
-
-/****************************************************************
- *************************   Priting   **************************
+ ************************    Writing    ************************
  ****************************************************************/
 char *
-gal_error_to_string(gal_error_t *err, int verbose);
+gal_error_write_lib_name(int lib_code);
+
+char *
+gal_error_write_string(gal_error_t *err, int verbose);
 
 int
-gal_error_to_stderr_all(gal_error_t *err, int verbose);
+gal_error_write_all_stderr(gal_error_t *err, int verbose);
+
+
+
+
+
+/****************************************************************
+ *********************   New gal_data_t   ***********************
+ ****************************************************************/
+int
+gal_error_add(gal_error_t **err, int code, int is_warning,
+              int lib_code, char *format, ...);
+
+int
+gal_error_add_va(gal_error_t **err, int code, int is_warning,
+                 int lib_code, char *format, va_list args);
+
+int
+gal_error_has_leave(gal_error_t **err, int lib_code,
+                    const char *func);
+
+
 
 __END_C_DECLS    /* From C++ preparations */
 

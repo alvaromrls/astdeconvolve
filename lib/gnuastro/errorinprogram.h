@@ -55,7 +55,7 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 void
 gal_errorinprogram(gal_error_t *error, int verbose)
 {
-  if(gal_error_to_stderr_all(error, verbose))
+  if(gal_error_write_all_stderr(error, verbose))
     exit(EXIT_FAILURE);
 }
 
