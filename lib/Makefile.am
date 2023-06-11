@@ -237,8 +237,8 @@ EXTRA_DIST = gnuastro.pc.in \
   $(internaldir)/checkset.h \
   $(internaldir)/commonopts.h \
   $(internaldir)/config.h.in \
-  $(internaldir)/error-internal.h \
   $(internaldir)/fixedstringmacros.h \
+  $(internaldir)/liberror.h \
   $(internaldir)/options.h \
   $(internaldir)/tableintern.h  \
   $(internaldir)/tile-internal.h \

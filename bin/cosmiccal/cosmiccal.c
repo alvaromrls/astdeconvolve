@@ -82,11 +82,11 @@ cosmiccal_printall(struct cosmiccalparams *p)
   curage=gal_cosmology_age(0.0f, p->H0, p->olambda, p->omatter,
                            p->oradiation, &err);
 
-  ccritd=gal_cosmology_critical_density(0.0f, p->H0, p->olambda, p->omatter,
-                                        p->oradiation, &err);
+  ccritd=gal_cosmology_critical_density(0.0f, p->H0, p->olambda,
+                                        p->omatter, p->oradiation, &err);
 
-  pd=gal_cosmology_proper_distance(p->redshift, p->H0, p->olambda, p->omatter,
-                                   p->oradiation, &err);
+  pd=gal_cosmology_proper_distance(p->redshift, p->H0, p->olambda,
+                                   p->omatter, p->oradiation, &err);
 
   ad=gal_cosmology_angular_distance(p->redshift, p->H0, p->olambda,
                                     p->omatter, p->oradiation, &err);
@@ -98,7 +98,8 @@ cosmiccal_printall(struct cosmiccalparams *p)
                                          p->omatter, p->oradiation, &err);
 
   absmagconv=gal_cosmology_to_absolute_mag(p->redshift, p->H0, p->olambda,
-                                           p->omatter, p->oradiation, &err);
+                                           p->omatter, p->oradiation,
+                                           &err);
 
   outage=gal_cosmology_age(p->redshift, p->H0, p->olambda, p->omatter,
                            p->oradiation, &err);
@@ -108,22 +109,23 @@ cosmiccal_printall(struct cosmiccalparams *p)
 
   vel=gal_cosmology_velocity_from_z(p->redshift);
 
-  vz=gal_cosmology_comoving_volume(p->redshift, p->H0, p->olambda, p->omatter,
-                                   p->oradiation, &err);
+  vz=gal_cosmology_comoving_volume(p->redshift, p->H0, p->olambda,
+                                   p->omatter, p->oradiation, &err);
 
-  /* Incase an error passed through the ui sanity checks.
-  if(gal_error_occurred(err))
-    error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s to "
-          "fix the problem. The values provided for the "
-          "cosmological constants (%f, %f, %f) don't satisfy "
-          "their constraints.", __func__, PACKAGE_BUGREPORT,
-          p->olambda, p->omatter, p->oradiation);
-  */
+  /* Incase an error passed through the ui sanity checks. */
+  gal_error_write_all_stderr_reverse(&err, p->cp.verboseerrors);
+  if(gal_error_has_breaking(err))
+    {
+      gal_error_free(err);
+      error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s to "
+            "fix the problem. The values provided for the "
+            "cosmological constants (%f, %f, %f) don't satisfy "
+            "their constraints", __func__, PACKAGE_BUGREPORT,
+            p->olambda, p->omatter, p->oradiation);
+    }
 
   /* Print out results: */
   cosmiccal_print_input(p);
-
-
   printf("\n\n Universe now\n");
   printf(    " ------------\n");
   printf(FLTFORMAT, "Age of Universe now (Ga*):", curage);

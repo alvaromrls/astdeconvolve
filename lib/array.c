@@ -37,34 +37,6 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 #include <gnuastro-internal/liberror.h>
 
 
-/*********************************************************************/
-/*****************          Dealing with errors       ****************/
-/*********************************************************************/
-static int
-array_error(gal_error_t **err, int code,
-            int is_warning, char *format, ...)
-{ GAL_LIBERROR_ADD_CONTENTS(GAL_LIBERROR_CODE_ARRAY); }
-
-static int
-array_error_exists_leave(gal_error_t **err, const char *func)
-{ return gal_error_has_leave(err, GAL_LIBERROR_CODE_ARRAY, func); }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -75,7 +47,7 @@ int
 gal_array_name_recognized(char *name, gal_error_t **err)
 {
   /* If an error has already existed, leave this function. */
-  if( array_error_exists_leave(err, __func__) ) return 0;
+  if( gal_error_has_leave(err, __func__) ) return 0;
 
   /* Check the various types. */
   if( gal_array_name_recognized_multiext(name, err) ) return 1;
@@ -84,10 +56,10 @@ gal_array_name_recognized(char *name, gal_error_t **err)
 
   /* Control should not get to here, but just to avoid compiler warnings,
      we'll return a NULL. */
-  array_error(err, GAL_ERROR_CODE_BUG, 0, "%s: a bug! Please "
-              "contact us at %s to solve the problem. Control "
-              "must not reach the end of this function", __func__,
-              PACKAGE_BUGREPORT);
+  gal_error_add(err, GAL_ERROR_CODE_BUG, 0, __func__, "a bug! "
+                "Please contact us at %s to solve the problem. "
+                "Control must not reach the end of this function",
+                PACKAGE_BUGREPORT);
   return 0;
 }
 
@@ -99,7 +71,7 @@ int
 gal_array_name_recognized_multiext(char *name, gal_error_t **err)
 {
   /* If an error has already existed, leave this function. */
-  if( array_error_exists_leave(err, __func__) ) return 0;
+  if( gal_error_has_leave(err, __func__) ) return 0;
 
   /* Check the various types. */
   if(       gal_fits_name_is_fits(name) ) return 1;
@@ -108,10 +80,10 @@ gal_array_name_recognized_multiext(char *name, gal_error_t **err)
 
   /* Control should not get to here, but just to avoid compiler warnings,
      we'll return a NULL. */
-  array_error(err, GAL_ERROR_CODE_BUG, 0, "%s: a bug! Please "
-              "contact us at %s to solve the problem. Control must "
-              "not reach the end of this function", __func__,
-              PACKAGE_BUGREPORT);
+  gal_error_add(err, GAL_ERROR_CODE_BUG, 0, __func__, "a bug! "
+                "Please contact us at %s to solve the problem. "
+                "Control must not reach the end of this function",
+                PACKAGE_BUGREPORT);
   return 0;
 }
 

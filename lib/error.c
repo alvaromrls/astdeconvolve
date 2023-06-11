@@ -23,93 +23,35 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 **********************************************************************/
 #include <config.h>
 
-#include <gnuastro/error.h>
-#include <gnuastro-internal/checkset.h>
-
 #include <error.h>
 
+#include <gnuastro/error.h>
+
+#include <gnuastro-internal/checkset.h>
 #include <gnuastro-internal/liberror.h>
 
 
-/* Print the name of the library that the error belongs to. To re-generate
-   the 'case' parts, run the following command:
-
-   ls *.h \
-      | sed 's/\.h//' \
-      | awk '{printf "    case GAL_LIBERROR_CODE_%s: return \"%s.h\"; break;\n", \
-                     toupper($1), $1}'
-*/
-char *
-gal_error_write_lib_name(int lib_code)
-{
-  switch(lib_code)
-    {
-    /*-------------------- Output of command above --------------------*/
-    case GAL_LIBERROR_CODE_ARITHMETIC: return "arithmetic.h"; break;
-    case GAL_LIBERROR_CODE_ARRAY: return "array.h"; break;
-    case GAL_LIBERROR_CODE_BINARY: return "binary.h"; break;
-    case GAL_LIBERROR_CODE_BLANK: return "blank.h"; break;
-    case GAL_LIBERROR_CODE_BOX: return "box.h"; break;
-    case GAL_LIBERROR_CODE_COLOR: return "color.h"; break;
-    case GAL_LIBERROR_CODE_CONVOLVE: return "convolve.h"; break;
-    case GAL_LIBERROR_CODE_COSMOLOGY: return "cosmology.h"; break;
-    case GAL_LIBERROR_CODE_DATA: return "data.h"; break;
-    case GAL_LIBERROR_CODE_DIMENSION: return "dimension.h"; break;
-    case GAL_LIBERROR_CODE_DS9: return "ds9.h"; break;
-    case GAL_LIBERROR_CODE_EPS: return "eps.h"; break;
-    case GAL_LIBERROR_CODE_ERROR: return "error.h"; break;
-    case GAL_LIBERROR_CODE_ERRORINPROGRAM: return "errorinprogram.h"; break;
-    case GAL_LIBERROR_CODE_FIT: return "fit.h"; break;
-    case GAL_LIBERROR_CODE_FITS: return "fits.h"; break;
-    case GAL_LIBERROR_CODE_GIT: return "git.h"; break;
-    case GAL_LIBERROR_CODE_INTERPOLATE: return "interpolate.h"; break;
-    case GAL_LIBERROR_CODE_JPEG: return "jpeg.h"; break;
-    case GAL_LIBERROR_CODE_KDTREE: return "kdtree.h"; break;
-    case GAL_LIBERROR_CODE_LABEL: return "label.h"; break;
-    case GAL_LIBERROR_CODE_LIST: return "list.h"; break;
-    case GAL_LIBERROR_CODE_MATCH: return "match.h"; break;
-    case GAL_LIBERROR_CODE_PDF: return "pdf.h"; break;
-    case GAL_LIBERROR_CODE_PERMUTATION: return "permutation.h"; break;
-    case GAL_LIBERROR_CODE_POINTER: return "pointer.h"; break;
-    case GAL_LIBERROR_CODE_POLYGON: return "polygon.h"; break;
-    case GAL_LIBERROR_CODE_POOL: return "pool.h"; break;
-    case GAL_LIBERROR_CODE_PYTHON: return "python.h"; break;
-    case GAL_LIBERROR_CODE_QSORT: return "qsort.h"; break;
-    case GAL_LIBERROR_CODE_SPECLINES: return "speclines.h"; break;
-    case GAL_LIBERROR_CODE_STATISTICS: return "statistics.h"; break;
-    case GAL_LIBERROR_CODE_TABLE: return "table.h"; break;
-    case GAL_LIBERROR_CODE_THREADS: return "threads.h"; break;
-    case GAL_LIBERROR_CODE_TIFF: return "tiff.h"; break;
-    case GAL_LIBERROR_CODE_TILE: return "tile.h"; break;
-    case GAL_LIBERROR_CODE_TXT: return "txt.h"; break;
-    case GAL_LIBERROR_CODE_TYPE: return "type.h"; break;
-    case GAL_LIBERROR_CODE_UNITS: return "units.h"; break;
-    case GAL_LIBERROR_CODE_WARP: return "warp.h"; break;
-    case GAL_LIBERROR_CODE_WCS: return "wcs.h"; break;
-    /*-----------------------------------------------------------------*/
-
-    default:
-      return "NOT-DEFINED! A bug! Please contact us at "PACKAGE_BUGREPORT;
-    }
-}
 
 
 
-
-
+/****************************************************************
+ ********************       Writing       ***********************
+ ****************************************************************/
 char *
 gal_error_write_string(gal_error_t *err, int verbose)
 {
   char *out, *stat=NULL;
 
   /* If an error is found which is NOT a warning. */
-  if(err->is_warning==0) stat="[BREAKING]";
-  else                   stat="[WARNING]";
+  if(err->is_warning==0) stat="BREAKING";
+  else                   stat="WARNING";
 
   /* Print the message. */
-  asprintf(&out, "%s: %d: %s %s",
-           gal_error_write_lib_name(err->lib_code),
-           err->code, err->back_msg, stat);
+  if(verbose)
+    asprintf(&out, "%s [code %d; %s]: %s", err->func,
+             err->code, stat, err->message);
+  else
+    asprintf(&out, "%s: %s", err->func, err->message);
 
   /* Return the final string. */
   return out;
@@ -123,23 +65,26 @@ gal_error_write_string(gal_error_t *err, int verbose)
    error. It returns the number of breaking errors that were found, thus
    giving the caller the option to 'EXIT_FAILURE' if necessary. */
 int
-gal_error_write_all_stderr(gal_error_t *err, int verbose)
+gal_error_write_all_stderr_reverse(gal_error_t **err, int verbose)
 {
-  char *errstr;
+  char *str;
   int ncritical=0;
-  gal_error_t *tmperr = NULL;
+  gal_error_t *tmp=NULL;
 
   /* If error structure is empty, everything is fine (there was no error to
      report), so simply return 0. */
-  if(!err) return 0;
+  if(*err==NULL) return 0;
+
+  /* Reverse the errors */
+  gal_error_reverse(err);
 
   /* Go over each component and print the message. */
-  for(tmperr = err; tmperr!=NULL; tmperr = tmperr->next)
+  for(tmp=*err; tmp!=NULL; tmp=tmp->next)
     {
-      if(err->is_warning==0) ncritical++;
-      errstr=gal_error_write_string(tmperr, verbose);
-      error(EXIT_SUCCESS, 0, errstr);
-      free(errstr);
+      if(tmp->is_warning==0) ncritical++;
+      str=gal_error_write_string(tmp, verbose);
+      error(EXIT_SUCCESS, 0, str);
+      free(str);
     }
 
   /* Return the number of critical errors. */
@@ -170,7 +115,7 @@ gal_error_write_all_stderr(gal_error_t *err, int verbose)
  ****************************************************************/
 /* Allocate an error data structure based on the given parameters. */
 static gal_error_t *
-error_allocate(uint8_t code, uint8_t is_warning, uint8_t lib_code,
+error_allocate(uint8_t code, uint8_t is_warning, const char *func,
                char *message, int *alloc_failed)
 {
   gal_error_t *out;
@@ -182,11 +127,17 @@ error_allocate(uint8_t code, uint8_t is_warning, uint8_t lib_code,
   if(out) *alloc_failed=0;
   else {  *alloc_failed=1; return NULL; }
 
-  /* Initialize the allocated error data */
+  /* Set the integer values. */
   out->code = code;
-  out->lib_code = lib_code;
   out->is_warning = is_warning;
-  gal_checkset_allocate_copy(message, &out->back_msg);
+
+  /* The message was allocated by 'gal_error_add_va' (which calls this), so
+     we don't need to re-allocate it here. */
+  out->message = message;
+
+  /* The function name is not allocated, so we need to allocate it as a
+     string before continuing. */
+  gal_checkset_allocate_copy(func, &out->func);
 
   /* Return the final structure. */
   return out;
@@ -198,17 +149,16 @@ error_allocate(uint8_t code, uint8_t is_warning, uint8_t lib_code,
 
 int
 gal_error_add(gal_error_t **err, int code, int is_warning,
-              int lib_code, char *format, ...)
+              const char *func, char *template, ...)
 {
   int status;
   va_list args;
 
   /* Start reading the variable arguments ("va"). */
-  va_start(args, format);
+  va_start(args, template);
 
   /* Add this error to the queue. */
-  status=gal_error_add_va(err, lib_code, code,
-                          is_warning, format, args);
+  status=gal_error_add_va(err, code, is_warning, func, template, args);
 
   /* Close the variable arguments. */
   va_end(args);
@@ -227,24 +177,65 @@ gal_error_add(gal_error_t **err, int code, int is_warning,
    'GAL_ERROR_CODE_ERRNOTALLOC'. */
 int
 gal_error_add_va(gal_error_t **err, int code, int is_warning,
-                 int lib_code, char *format, va_list args)
+                 const char *func, char *template, va_list args)
 {
   int alloc_failed;
   char *message=NULL;
   gal_error_t *new=NULL;
 
   /* Allocate the error string and put it in the pointer. */
-  if(vasprintf(&message, format, args)<0)
+  if(vasprintf(&message, template, args)<0)
     message=gal_checkset_malloc_cat((char *)__func__,
                                     ": can not use 'vasprintf'" );
 
   /* Allocate the new error structure. */
-  new=error_allocate(code, is_warning, lib_code, message,
-                     &alloc_failed);
+  new=error_allocate(code, is_warning, func, message, &alloc_failed);
 
   /* Close the variable argument list and return the status. */
   if(alloc_failed) return GAL_ERROR_CODE_ERRNOTALLOC;
   else        { new->next=*err; *err=new; return 0; }
+}
+
+
+
+
+
+void
+gal_error_reverse(gal_error_t **err)
+{
+  gal_error_t *tmp, *out=NULL;
+
+  if( *err && (*err)->next )
+    {
+      /* Parse the input and add them to the 'out' list. */
+      for(tmp=*err; tmp!=NULL; tmp=tmp->next)
+        gal_error_add(&out, tmp->code, tmp->is_warning,
+                      tmp->func, "%s", tmp->message);
+
+      /* Free the input.  */
+      gal_error_free(*err);
+
+      /* Put the output in the pointer of the input. */
+      *err=out;
+    }
+}
+
+
+
+
+
+void
+gal_error_free(gal_error_t *err)
+{
+  gal_error_t *tmp;
+  while(err!=NULL)
+    {
+      tmp=err->next;
+      free(err->func);
+      free(err->message);
+      free(err);
+      err=tmp;
+    }
 }
 
 
@@ -257,14 +248,32 @@ gal_error_add_va(gal_error_t **err, int code, int is_warning,
    with a fixed string to be clear and it will return the integer
    'GAL_ERROR_CODE_ERRLISTFULL'. */
 int
-gal_error_has_leave(gal_error_t **err, int lib_code, const char *func)
+gal_error_has_leave(gal_error_t **err, const char *func)
 {
   if(*err)
     {
-      gal_error_add(err, lib_code, GAL_ERROR_CODE_ERRLISTFULL, 0,
-                    "%s: previous %s, will not continue", func,
+      gal_error_add(err, GAL_ERROR_CODE_ERRLISTFULL, 0, func,
+                    "previous %s, will not continue",
                     (*err)->next ? "errors exist" : "error exists");
       return (*err)->code;
     }
   else return 0;
+}
+
+
+
+
+
+/* Return 1 if there is a breaking error. */
+int
+gal_error_has_breaking(gal_error_t *err)
+{
+  gal_error_t *tmp;
+
+  /* Parse through the list of errors and return 1 if any are breaking. */
+  for(tmp=err; tmp!=NULL; tmp=tmp->next)
+    if(tmp->is_warning==0) return 1;
+
+  /* If we got here, then there was no breaking errors. */
+  return 0;
 }

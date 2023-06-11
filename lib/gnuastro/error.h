@@ -56,11 +56,11 @@ __BEGIN_C_DECLS  /* From C++ preparations */
 /* Data type for storing errors */
 typedef struct gal_error_t
 {
-  uint8_t code;             /* From 'GAL_ERROR_CODE_*' defined below.    */
-  uint8_t lib_code;         /* Library which created the error.          */
-  uint8_t is_warning;       /* ==1: only a warning, not breaking.        */
-  char *back_msg;           /* Message of backend (library).             */
-  struct gal_error_t *next; /* Next error message.                       */
+  uint8_t            code;       /* From 'GAL_ERROR_CODE_*' defined below. */
+  uint8_t            is_warning; /* ==1: only a warning, not breaking.     */
+  char               *func;      /* Function name where error occurred.    */
+  char               *message;   /* Message of backend (library).          */
+  struct gal_error_t *next;      /* Next error message.                    */
 } gal_error_t;
 
 
@@ -159,13 +159,10 @@ enum gal_error_codes{
  ************************    Writing    ************************
  ****************************************************************/
 char *
-gal_error_write_lib_name(int lib_code);
-
-char *
 gal_error_write_string(gal_error_t *err, int verbose);
 
 int
-gal_error_write_all_stderr(gal_error_t *err, int verbose);
+gal_error_write_all_stderr_reverse(gal_error_t **err, int verbose);
 
 
 
@@ -176,15 +173,23 @@ gal_error_write_all_stderr(gal_error_t *err, int verbose);
  ****************************************************************/
 int
 gal_error_add(gal_error_t **err, int code, int is_warning,
-              int lib_code, char *format, ...);
+              const char *func, char *template, ...);
 
 int
 gal_error_add_va(gal_error_t **err, int code, int is_warning,
-                 int lib_code, char *format, va_list args);
+                 const char *func, char *template, va_list args);
+
+void
+gal_error_reverse(gal_error_t **err);
+
+void
+gal_error_free(gal_error_t *err);
 
 int
-gal_error_has_leave(gal_error_t **err, int lib_code,
-                    const char *func);
+gal_error_has_breaking(gal_error_t *err);
+
+int
+gal_error_has_leave(gal_error_t **err, const char *func);
 
 
 

@@ -55,8 +55,16 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 void
 gal_errorinprogram(gal_error_t *error, int verbose)
 {
-  if(gal_error_write_all_stderr(error, verbose))
-    exit(EXIT_FAILURE);
+  /* The 'gal_error_write_all_stderr_reverse' will reverse the error list
+     internally and free the original list. So we need to keep the original
+     list for proper freeing. */
+  gal_error_t *origerr=error;
+  if(gal_error_write_all_stderr_reverse(&error, verbose))
+    {
+      gal_error_free(origerr);
+      gal_error_free(error);
+      exit(EXIT_FAILURE);
+    }
 }
 
 
