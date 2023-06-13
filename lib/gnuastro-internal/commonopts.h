@@ -403,6 +403,20 @@ struct argp_option gal_commonopts_options[] =
       GAL_OPTIONS_NOT_MANDATORY,
       GAL_OPTIONS_NOT_SET
     },
+    {
+      "list-error-codes",
+      GAL_OPTIONS_KEY_LISTERRORCODES,
+      0,
+      0,
+      "List all returned error codes with description.",
+      GAL_OPTIONS_GROUP_OPERATING_MODE,
+      &cp->listerrorcodes,
+      GAL_OPTIONS_NO_ARG_TYPE,
+      GAL_OPTIONS_RANGE_0_OR_1,
+      GAL_OPTIONS_NOT_MANDATORY,
+      GAL_OPTIONS_NOT_SET,
+      gal_options_print_error_codes
+    },
 
 
 

@@ -90,7 +90,7 @@ cosmology_sanity_check(double o_lambda_0, double o_matter_0,
   /* Check if the density fractions are between 0 and 1. */
   if(o_lambda_0 > 1 || o_lambda_0 < 0)
     stat=gal_error_add(err, GAL_ERROR_CODE_EDOM, 0, func,
-                       "value to option 'olambda' must be between zero "
+                       "value to argument 'olambda' must be between zero "
                        "and one (inclusive), but the given value is "
                        "'%g'. Recall that 'olambda' is the current "
                        "cosmological constant density per critical "
@@ -98,14 +98,14 @@ cosmology_sanity_check(double o_lambda_0, double o_matter_0,
 
   if(o_matter_0 > 1 || o_matter_0 < 0)
     stat=gal_error_add(err, GAL_ERROR_CODE_EDOM, 0, func, "value to "
-                       "option 'omatter' must be between zero and "
+                       "argument 'omatter' must be between zero and "
                        "one (inclusive), but the given value is '%g'. "
                        "Recall that 'omatter' is 'Current matter "
                        "density per critical density'", o_matter_0);
 
   if(o_radiation_0 > 1 || o_radiation_0 < 0)
     stat=gal_error_add(err, GAL_ERROR_CODE_EDOM, 0, func, "value to "
-                       "option 'oradiation' must be between zero and "
+                       "argument 'oradiation' must be between zero and "
                        "one (inclusive), but the given value is '%g'. "
                        "Recall that 'oradiation' is 'Current radiation "
                        "density per critical density", o_radiation_0);

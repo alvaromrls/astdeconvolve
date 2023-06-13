@@ -29,7 +29,7 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
    must be included before the C++ preparations below */
 #include <stdint.h>
 #include <stdarg.h>
-#include <gnuastro/error.h>
+
 
 /* C++ Preparations */
 #undef __BEGIN_C_DECLS
@@ -56,11 +56,11 @@ __BEGIN_C_DECLS  /* From C++ preparations */
 /* Data type for storing errors */
 typedef struct gal_error_t
 {
-  uint8_t            code;       /* From 'GAL_ERROR_CODE_*' defined below. */
-  uint8_t            is_warning; /* ==1: only a warning, not breaking.     */
-  char               *func;      /* Function name where error occurred.    */
-  char               *message;   /* Message of backend (library).          */
-  struct gal_error_t *next;      /* Next error message.                    */
+  uint8_t            code;       /* 'GAL_ERROR_CODE_*' defined below.  */
+  uint8_t            is_warning; /* ==1: only a warning, not breaking. */
+  char               *func;      /* Function name where error occurred.*/
+  char               *message;   /* Message of backend (library).      */
+  struct gal_error_t *next;      /* Next error message.                */
 } gal_error_t;
 
 
@@ -148,7 +148,7 @@ enum gal_error_codes{
 
 
   /* Total number of Gnuastro error types (should be last!) */
-  GAL_ERROR_CODE_NTYPES
+  GAL_ERROR_CODE_NUMCODES
 };
 
 
@@ -162,8 +162,12 @@ char *
 gal_error_write_string(gal_error_t *err, int verbose);
 
 int
-gal_error_write_all_stderr_reverse(gal_error_t **err, int verbose);
+gal_error_write_all_stderr_reverse(gal_error_t *err, int verbose);
 
+/* This actually returns 'gal_data_t', but 'error.h' should not depend on
+   'data.h'; because it is lower level.*/
+void *
+gal_error_code_info();
 
 
 
@@ -179,18 +183,20 @@ int
 gal_error_add_va(gal_error_t **err, int code, int is_warning,
                  const char *func, char *template, va_list args);
 
-void
-gal_error_reverse(gal_error_t **err);
+gal_error_t *
+gal_error_reverse_keep_in(gal_error_t *err);
 
 void
 gal_error_free(gal_error_t *err);
 
 int
-gal_error_has_breaking(gal_error_t *err);
-
-int
 gal_error_has_leave(gal_error_t **err, const char *func);
 
+int
+gal_error_breaking_present(gal_error_t *err);
+
+int
+gal_error_breaking_last_code(gal_error_t *err);
 
 
 __END_C_DECLS    /* From C++ preparations */

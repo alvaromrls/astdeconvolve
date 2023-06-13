@@ -27,7 +27,6 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
    must be included before the C++ preparations below */
 #include <math.h>
 #include <wcslib/wcs.h>
-#include <gnuastro/error.h>
 
 /* When we are within Gnuastro's building process, 'IN_GNUASTRO_BUILD' is
    defined. In the build process, installation information (in particular

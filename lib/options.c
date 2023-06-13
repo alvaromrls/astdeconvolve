@@ -133,13 +133,14 @@ gal_options_abort_if_mandatory_missing(struct gal_options_common_params *cp)
   sprintf(info+strlen(info), "\n");
 
   /* Print suggestions, way to solve it. */
-  sprintf(info+strlen(info), "Use the command-line or a configuration file "
-          "to set value(s).\n\nFor a complete description of command-line "
-          "options and configuration files, please see the \"Options\" and "
-          "\"Configuration files\" section of the Gnuastro book "
-          "respectively. You can read them on the command-line by running "
-          "the following commands (type 'SPACE' to flip through pages, type "
-          "'Q' to return to the command-line):\n\n"
+  sprintf(info+strlen(info), "Use the command-line or a configuration "
+          "file to set value(s).\n\nFor a complete description of "
+          "command-line options and configuration files, please see the "
+          "\"Options\" and \"Configuration files\" section of the "
+          "Gnuastro book respectively. You can read them on the "
+          "command-line by running the following commands (type "
+          "'SPACE' to flip through pages, type 'Q' to return to the "
+          "command-line):\n\n"
           "  info gnuastro Options\n"
           "  info gnuastro \"Configuration files\"\n");
 
@@ -255,8 +256,8 @@ gal_options_check_version(struct argp_option *option, char *arg,
                         "    $ info gnuastro \"Version controlled "
                         "source\"\n", PACKAGE_VERSION, arg, arg);
 
-          /* Just to avoid compiler warnings for unused variables. The program
-             will never reach this point! */
+          /* Just to avoid compiler warnings for unused variables. The
+             program will never reach this point! */
           arg=filename=NULL; lineno=0; option=NULL; junk=NULL;
         }
     }
@@ -351,6 +352,35 @@ gal_options_print_citation(struct argp_option *option, char *arg,
          "                   (http://www.chris.com/ascii/) |/\n");
 
 
+
+  /* Exit the program. */
+  exit(EXIT_SUCCESS);
+
+  /* Just to avoid compiler warnings for unused variables. The program
+     will never reach this point! */
+  arg=filename=NULL; lineno=0; option=NULL;
+}
+
+
+
+
+
+/* Print the program error codes. */
+void *
+gal_options_print_error_codes(struct argp_option *option, char *arg,
+                              char *filename, size_t lineno, void *pa)
+{
+  gal_data_t *info=gal_error_code_info();
+
+  /* Print some extra information for the user. */
+  printf("# Returned integers in Gnuastro %s.\n", PACKAGE_VERSION);
+  printf("# Any non-zero integer signifies a different error category.\n");
+  printf("# Note that these are returned to the shell, not printed.\n");
+  printf("# The returned value can be retried with '$?'.\n#\n");
+
+  /* Print the information on the standard output. */
+  gal_table_write(info, NULL, NULL, GAL_TABLE_FORMAT_TXT, NULL,
+                  NULL, 1);
 
   /* Exit the program. */
   exit(EXIT_SUCCESS);

@@ -127,6 +127,7 @@ enum options_common_keys
   GAL_OPTIONS_KEY_INTERPNUMNGB,
   GAL_OPTIONS_KEY_VERBOSEERRORS,
   GAL_OPTIONS_KEY_ONEELEMPERTILE,
+  GAL_OPTIONS_KEY_LISTERRORCODES,
   GAL_OPTIONS_KEY_WCSLINEARMATRIX,
   GAL_OPTIONS_KEY_INTERPONLYBLANK,
 };
@@ -211,6 +212,7 @@ struct gal_options_common_params
   uint8_t                  log; /* Make a log file.                       */
   char            *onlyversion; /* Redundant, kept/set for generality.    */
   uint8_t        verboseerrors; /* More detailed error message.           */
+  uint8_t       listerrorcodes; /* List all error codes and values.       */
 
   /* Configuration files. */
   uint8_t          printparams; /* To print the full list of parameters.  */
@@ -272,6 +274,10 @@ gal_options_check_version(struct argp_option *option, char *arg,
 void *
 gal_options_print_citation(struct argp_option *option, char *arg,
                            char *filename, size_t lineno, void *pa);
+
+void *
+gal_options_print_error_codes(struct argp_option *option, char *arg,
+                              char *filename, size_t lineno, void *pa);
 
 void *
 gal_options_check_config(struct argp_option *option, char *arg,

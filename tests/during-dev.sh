@@ -89,7 +89,7 @@ outdir=~/tmp
 # that will delete that particular program.
 utilname=cosmiccal
 arguments=
-options="-z2 --olambda=10"
+options="-z2 --olambda=0.999 --list-error-codes"
 
 
 

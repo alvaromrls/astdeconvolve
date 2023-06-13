@@ -55,15 +55,15 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 void
 gal_errorinprogram(gal_error_t *error, int verbose)
 {
-  /* The 'gal_error_write_all_stderr_reverse' will reverse the error list
-     internally and free the original list. So we need to keep the original
-     list for proper freeing. */
-  gal_error_t *origerr=error;
-  if(gal_error_write_all_stderr_reverse(&error, verbose))
+  /* Find the last breaking error code. */
+  int failcode=gal_error_breaking_last_code(error);
+
+  /* If there is an error, this function will just print the reversed
+     list, it will keep the input untouched. */
+  if(gal_error_write_all_stderr_reverse(error, verbose))
     {
-      gal_error_free(origerr);
       gal_error_free(error);
-      exit(EXIT_FAILURE);
+      exit(failcode);
     }
 }
 

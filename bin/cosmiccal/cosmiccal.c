@@ -56,7 +56,8 @@ cosmiccal_print_input(struct cosmiccalparams *p)
   printf("\n Input parameters\n");
   printf(  " ----------------\n");
   if( !isnan(p->redshift) )
-    printf(FLTFORMAT, "Desired redshift for calculations (z):", p->redshift);
+    printf(FLTFORMAT, "Desired redshift for calculations (z):",
+           p->redshift);
   printf(FLTFORMAT, "Expansion rate (Hubble constant, H0), now:", p->H0);
   printf(FLTFORMAT, "Cosmological constant fractional density, now:",
          p->olambda);
@@ -71,11 +72,35 @@ cosmiccal_print_input(struct cosmiccalparams *p)
 
 
 static void
+cosmiccal_error_finishing(gal_error_t **err, int verbose)
+{
+  /* If we have a breaking error, we have a bug in the CosmicCalculator
+     something that should have been checked and reported in 'ui.c' hasn't
+     been checked. */
+  if(gal_error_breaking_present(*err))
+    gal_error_add(err, GAL_ERROR_CODE_BUG, 0, NULL,
+                  "a bug! Please contact us at '%s' to fix the problem. "
+                  "Any problem in the input parameters should have been "
+                  "checked before this stage (you should not have seen "
+                  "the library errors above, but a more simpler error "
+                  "message only from the CosmicCalculator program",
+                  PACKAGE_BUGREPORT);
+
+  /* If there were any warnings or errors, print them and possibly
+     abort the program. */
+  gal_errorinprogram(*err, verbose);
+}
+
+
+
+
+
+static void
 cosmiccal_printall(struct cosmiccalparams *p)
 {
+  gal_error_t *err=NULL;
   double ad, ld, vz, pd, vel, absmagconv;
   double curage, ccritd, distmod, outage, zcritd;
-  gal_error_t *err = NULL;
 
   /* The user wants everything, do all the calculations and print
      everything with full descriptions. */
@@ -112,17 +137,9 @@ cosmiccal_printall(struct cosmiccalparams *p)
   vz=gal_cosmology_comoving_volume(p->redshift, p->H0, p->olambda,
                                    p->omatter, p->oradiation, &err);
 
-  /* Incase an error passed through the ui sanity checks. */
-  gal_error_write_all_stderr_reverse(&err, p->cp.verboseerrors);
-  if(gal_error_has_breaking(err))
-    {
-      gal_error_free(err);
-      error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s to "
-            "fix the problem. The values provided for the "
-            "cosmological constants (%f, %f, %f) don't satisfy "
-            "their constraints", __func__, PACKAGE_BUGREPORT,
-            p->olambda, p->omatter, p->oradiation);
-    }
+  /* Incase an error passed through the ui sanity checks, we need to check
+     here before printing the results. */
+  cosmiccal_error_finishing(&err, p->cp.verboseerrors);
 
   /* Print out results: */
   cosmiccal_print_input(p);
@@ -313,8 +330,9 @@ cosmiccal(struct cosmiccalparams *p)
   else
     cosmiccal_printall(p);
 
-  /* Incase any error occurred. */
-  gal_errorinprogram(err, p->cp.verboseerrors);
+  /* Incase an error passed through the ui sanity checks, we need to check
+     here before printing the results. */
+  cosmiccal_error_finishing(&err, p->cp.verboseerrors);
 
   /* Print a warning if the redshift is too close for the hubble flow to be
      significant. This is done at the end because it is important and may
