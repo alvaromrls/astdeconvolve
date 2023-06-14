@@ -3,12 +3,11 @@ Function to abort programs with a complete error message.
 
 !!! ONLY INCLUDE IN COMPILED PROGRAMS, NO THE LIBRARY !!!
 
-Original author:
-     Jash Shah <jash28582@gmail.com>
-Contributing author(s):
-     Fathma Mehnoor <fathmamehnoor@gmail.com>
-     Mohammad Akhlaghi <mohammad@akhlaghi.org>
-Copyright (C) 2015-2023 Free Software Foundation, Inc.
+Authors:
+     2022-2022 Jash Shah <jash28582@gmail.com>
+     2022-2023 Mohammad Akhlaghi <mohammad@akhlaghi.org>
+     2023-2023 Fathma Mehnoor <fathmamehnoor@gmail.com>
+Copyright (C) 2023-2023 Free Software Foundation, Inc.
 
 Gnuastro is free software: you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the
@@ -23,24 +22,13 @@ General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 **********************************************************************/
-#ifndef __ERRORINPROGRAM_H__
-#define __ERRORINPROGRAM_H__
+#include <config.h>
 
-/* Include other headers if necessary here. Note that other header files
-   must be included before the C++ preparations below */
+#include <errno.h>
+#include <error.h>
+#include <stdlib.h>
+
 #include <gnuastro/error.h>
-
-/* C++ Preparations */
-#undef __BEGIN_C_DECLS
-#undef __END_C_DECLS
-#ifdef __cplusplus
-# define __BEGIN_C_DECLS extern "C" {
-# define __END_C_DECLS }
-#else
-# define __BEGIN_C_DECLS                /* empty */
-# define __END_C_DECLS                  /* empty */
-#endif
-/* End of C++ preparations */
 
 
 
@@ -53,7 +41,7 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
    function's full definition is in this header file and the user'sSo it is
    loaded into each source file that needs it separately. */
 void
-gal_errorinprogram(gal_error_t *error, int verbose)
+gal_progcrash_list(gal_error_t *error, int verbose)
 {
   /* Find the last breaking error code. */
   int failcode=gal_error_breaking_last_code(error);
@@ -71,6 +59,30 @@ gal_errorinprogram(gal_error_t *error, int verbose)
 
 
 
-__END_C_DECLS    /* From C++ preparations */
+/* This function gets a single error message and error code, and will print
+   it and abort. */
+void
+gal_progcrash_one(int code, int is_warning, const char *func,
+                  int verbose, char *template, ...)
+{
+  int status=0;
+  va_list args;
+  gal_error_t *err=NULL;
 
-#endif           /* __GAL_ERRORPROGRAM_H__ */
+  /* Start reading the variable arguments ("va"). */
+  va_start(args, template);
+
+  /* Define the error. */
+  status=gal_error_add_va(&err, code, is_warning, func, template, args);
+
+  /* If the error structure couldn't be allocated, inform the user. Since
+     we couldn't actually allocate an error structure, we can't use
+     ('gal_error_write_all_stderr_reverse').*/
+  if(status==GAL_ERROR_CODE_ERRNOTALLOC)
+    error(EXIT_FAILURE, 0, "%s: couldn't allocate 'err' structure! "
+          "This should not regularly happen, unless there is severe "
+          "memory/kernel consumption on your system", __func__);
+
+  /* Print the error and abort. */
+  gal_progcrash_list(err, verbose);
+}

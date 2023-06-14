@@ -2,7 +2,7 @@
 error - error handling throughout the Gnuastro library
 This is part of GNU Astronomy Utilities (Gnuastro) package.
 
-Original author:
+Authors:
      2022-2022 Jash Shah <jash28582@gmail.com>
      2022-2023 Mohammad Akhlaghi <mohammad@akhlaghi.org>
      2022-2022 Pedram Ashofteh-Ardakani <pedramardakani@pm.me>

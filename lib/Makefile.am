@@ -172,7 +172,6 @@ pkginclude_HEADERS = gnuastro/config.h \
   $(headersdir)/ds9.h \
   $(headersdir)/eps.h \
   $(headersdir)/error.h \
-  $(headersdir)/errorinprogram.h \
   $(headersdir)/fit.h \
   $(headersdir)/fits.h \
   $(headersdir)/git.h \
@@ -240,6 +239,7 @@ EXTRA_DIST = gnuastro.pc.in \
   $(internaldir)/fixedstringmacros.h \
   $(internaldir)/liberror.h \
   $(internaldir)/options.h \
+  $(internaldir)/progcrash.h \
   $(internaldir)/tableintern.h  \
   $(internaldir)/tile-internal.h \
   $(internaldir)/timing.h \

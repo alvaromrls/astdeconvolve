@@ -34,7 +34,8 @@ bin_PROGRAMS = astcosmiccal
 astcosmiccal_LDADD = $(top_builddir)/bootstrapped/lib/libgnu.la \
                      -lgnuastro $(CONFIG_LDADD)
 
-astcosmiccal_SOURCES = main.c ui.c cosmiccal.c
+astcosmiccal_SOURCES = main.c ui.c cosmiccal.c \
+                       $(top_srcdir)/lib/progcrash.c
 
 EXTRA_DIST = main.h authors-cite.h args.h ui.h cosmiccal.h \
              astcosmiccal-complete.bash

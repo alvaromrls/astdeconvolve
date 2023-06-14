@@ -29,7 +29,8 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 #include <stdlib.h>
 
 #include <gnuastro/cosmology.h>
-#include <gnuastro/errorinprogram.h>
+
+#include <gnuastro-internal/progcrash.h>
 
 #include "main.h"
 
@@ -88,7 +89,7 @@ cosmiccal_error_finishing(gal_error_t **err, int verbose)
 
   /* If there were any warnings or errors, print them and possibly
      abort the program. */
-  gal_errorinprogram(*err, verbose);
+  gal_progcrash_list(*err, verbose);
 }
 
 

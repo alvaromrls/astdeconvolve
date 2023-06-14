@@ -34,7 +34,8 @@ bin_PROGRAMS = astarithmetic
 astarithmetic_LDADD = $(top_builddir)/bootstrapped/lib/libgnu.la \
                       -lgnuastro $(CONFIG_LDADD)
 
-astarithmetic_SOURCES = main.c ui.c arithmetic.c operands.c
+astarithmetic_SOURCES = main.c ui.c arithmetic.c operands.c \
+                        $(top_srcdir)/lib/progcrash.c
 
 EXTRA_DIST = main.h authors-cite.h args.h ui.h arithmetic.h operands.h \
              astarithmetic-complete.bash

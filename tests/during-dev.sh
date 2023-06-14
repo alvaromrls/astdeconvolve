@@ -89,7 +89,7 @@ outdir=~/tmp
 # that will delete that particular program.
 utilname=cosmiccal
 arguments=
-options="-z2 --olambda=2 --list-error"
+options="-z2 --olambda=2"
 
 
 
@@ -206,7 +206,8 @@ if make -j$numjobs -C "$builddir"; then
     fi
 
     # Run the built utility with the given arguments and options.
-    "$utility" $arguments $options $extraopts | asttable -oerrors.fits
+    "$utility" $arguments $options $extraopts
+    echo $?
 
     # Clean up.
     rm -rf .gnuastro

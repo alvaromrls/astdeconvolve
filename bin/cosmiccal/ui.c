@@ -39,6 +39,7 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 #include <gnuastro-internal/timing.h>
 #include <gnuastro-internal/options.h>
 #include <gnuastro-internal/checkset.h>
+#include <gnuastro-internal/progcrash.h>
 #include <gnuastro-internal/fixedstringmacros.h>
 
 #include "main.h"
@@ -212,13 +213,16 @@ ui_add_to_single_value(struct argp_option *option, char *arg,
 
   /* In case of printing the option values. */
   if(lineno==-1)
-    error(EXIT_FAILURE, 0, "currently the options to be printed in one row "
-          "(like '--age', '--luminositydist', and etc) do not support "
-          "printing with the '--printparams' ('-P'), or writing into "
-          "configuration files due to lack of time when implementing "
-          "these features. You can put them into configuration files "
-          "manually. Please get in touch with us at '%s', so we can "
-          "implement it", PACKAGE_BUGREPORT);
+    gal_progcrash_one(GAL_ERROR_CODE_ENOSYS, 0, __func__,
+                      p->cp.verboseerrors, "currently the options to be "
+                      "printed in one row (like '--age', "
+                      "'--luminositydist', and etc) do not support "
+                      "printing with the '--printparams' ('-P'), or "
+                      "writing into configuration files due to lack of "
+                      "time when implementing these features. You can "
+                      "put them into configuration files manually. "
+                      "Please get in touch with us at '%s', so we can "
+                      "implement it", PACKAGE_BUGREPORT);
 
   /* If this option is given in a configuration file, then 'arg' will not
      be NULL and we don't want to do anything if it is '0'. */

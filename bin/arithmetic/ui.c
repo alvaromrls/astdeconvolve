@@ -35,11 +35,11 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 #include <gnuastro/array.h>
 #include <gnuastro/threads.h>
 #include <gnuastro/arithmetic.h>
-#include <gnuastro/errorinprogram.h>
 
 #include <gnuastro-internal/timing.h>
 #include <gnuastro-internal/options.h>
 #include <gnuastro-internal/checkset.h>
+#include <gnuastro-internal/progcrash.h>
 #include <gnuastro-internal/fixedstringmacros.h>
 
 #include "main.h"
@@ -337,7 +337,7 @@ ui_check_options_and_arguments(struct arithmeticparams *p)
             token->v[0]='-';
 
           /* If an error occurred, abort the program. */
-          gal_errorinprogram(err, cp->verboseerrors);
+          gal_progcrash_list(err, cp->verboseerrors);
         }
     }
 
