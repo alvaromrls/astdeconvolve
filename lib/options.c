@@ -373,10 +373,11 @@ gal_options_print_error_codes(struct argp_option *option, char *arg,
   gal_data_t *info=gal_error_code_info();
 
   /* Print some extra information for the user. */
-  printf("# Returned integers in Gnuastro %s.\n", PACKAGE_VERSION);
-  printf("# Any non-zero integer signifies a different error category.\n");
-  printf("# Note that these are returned to the shell, not printed.\n");
-  printf("# The returned value can be retried with '$?'.\n#\n");
+  printf("# Returned integers in Gnuastro %s.\n"
+         "# Any non-zero integer signifies a different error category.\n"
+         "# Note that these are returned to the shell, not printed.\n"
+         "# The returned value can be retrieved with '$?' "
+         "(for example 'echo $?').\n#\n", PACKAGE_VERSION);
 
   /* Print the information on the standard output. */
   gal_table_write(info, NULL, NULL, GAL_TABLE_FORMAT_TXT, NULL,

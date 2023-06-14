@@ -110,27 +110,37 @@ gal_error_write_all_stderr_reverse(gal_error_t *err, int verbose)
 
 
 
-#define ERROR_INFO(STR) \
-  gal_checkset_allocate_copy(STR, &strarr[i])
-
+/* Put all the error information into a simple table. */
+#define ERROR_INFO(NAME, CAT, INFO)               \
+  gal_checkset_allocate_copy(CAT,  &catarr[i]);   \
+  gal_checkset_allocate_copy(NAME, &namearr[i]);  \
+  gal_checkset_allocate_copy(INFO, &infoarr[i]);
 void *
 gal_error_code_info(void *junk)
 {
   uint8_t *carr;
-  char **strarr;
+  char **namearr, **infoarr, **catarr;
   size_t i, nerr=GAL_ERROR_CODE_NUMCODES;
 
   /* Allocate the two columns. */
   gal_data_t *codes=gal_data_alloc(NULL, GAL_TYPE_UINT8, 1, &nerr, NULL,
-                                   0, -1, 1, "ERROR-CODE", "counter",
+                                   0, -1, 1, "CODE", "counter",
                                    "Code of error.");
+  gal_data_t *names=gal_data_alloc(NULL, GAL_TYPE_STRING, 1, &nerr, NULL,
+                                   0, -1, 1, "NAME", "counter",
+                                   "Code of error.");
+  gal_data_t *cat=gal_data_alloc(NULL, GAL_TYPE_STRING, 1, &nerr, NULL,
+                                 0, -1, 1, "CATEGORY", "info",
+                                 "Category of the error.");
   gal_data_t *info=gal_data_alloc(NULL, GAL_TYPE_STRING, 1, &nerr, NULL,
-                                  0, -1, 1, "ERROR-INFO", "info",
+                                  0, -1, 1, "DESCRIPTION", "info",
                                   "Description of the error.");
 
   /* Go one by one and add all the error information. */
   carr=codes->array;
-  strarr=info->array;
+  catarr=cat->array;
+  infoarr=info->array;
+  namearr=names->array;
   for(i=0; i<nerr; ++i)
     {
       carr[i]=i;
@@ -138,98 +148,135 @@ gal_error_code_info(void *junk)
         {
         /* Success */
         case GAL_ERROR_CODE_INVALID:
-          ERROR_INFO("Success (no error)."); break;
+          ERROR_INFO("INVALID", "invalid", "No error (Success!)."); break;
 
-        /* File/directory or Input/output issues. */
+        /* File/directory. */
         case GAL_ERROR_CODE_EIO:
-          ERROR_INFO("Generic I/O (only when not in below)."); break;
+          ERROR_INFO("EIO", "file-dir",
+                     "Generic I/O (only when not in below)."); break;
 
         case GAL_ERROR_CODE_EACCESS:
-          ERROR_INFO("Cannot access the given location."); break;
+          ERROR_INFO("EACCESS", "file-dir",
+                     "Cannot access the given location."); break;
         case GAL_ERROR_CODE_ENOENT:
-          ERROR_INFO("No such file or directory."); break;
+          ERROR_INFO("ENOENT", "file-dir",
+                     "No such file or directory."); break;
         case GAL_ERROR_CODE_ENXIO:
-          ERROR_INFO("No such device or address."); break;
+          ERROR_INFO("ENXIO", "file-dir",
+                     "No such device or address."); break;
         case GAL_ERROR_CODE_EFTYPE:
-          ERROR_INFO("Bad file format for operation."); break;
+          ERROR_INFO("EFTYPE", "file-dir",
+                     "Bad file format for operation."); break;
         case GAL_ERROR_CODE_EEXIST:
-          ERROR_INFO("File exists (and we can't overwrite)."); break;
+          ERROR_INFO("EEXIST", "file-dir",
+                     "File exists (and we can't overwrite)."); break;
         case GAL_ERROR_CODE_ENOTDIR:
-          ERROR_INFO("Not a directory (but operation expects dir)."); break;
+          ERROR_INFO("ENOTDIR", "file-dir",
+                     "Not a directory (but operation expects dir).");break;
         case GAL_ERROR_CODE_EISDIR:
-          ERROR_INFO("Is a directory (but expects file)."); break;
+          ERROR_INFO("EISDIR", "file-dir",
+                     "Is a directory (but operation expects file)."); break;
         case GAL_ERROR_CODE_EFBIG:
-          ERROR_INFO("File is too large."); break;
+          ERROR_INFO("EFBIG", "file-dir","File is too large."); break;
         case GAL_ERROR_CODE_EOF:
-          ERROR_INFO("Reached end-of-file, no content."); break;
+          ERROR_INFO("EOF", "file-dir",
+                     "Reached end-of-file, no content."); break;
         case GAL_ERROR_CODE_ENOTEMPTY:
-          ERROR_INFO("Directory not empty."); break;
+          ERROR_INFO("ENOTEMPTY", "file-dir",
+                     "Directory not empty."); break;
         case GAL_ERROR_CODE_ENODATA:
-          ERROR_INFO("No data available in input file."); break;
+          ERROR_INFO("ENODATA", "file-dir",
+                     "No data available in input file."); break;
 
         /* Input values (usually checked at the start of a function). */
         case GAL_ERROR_CODE_E2BIG:
-          ERROR_INFO("Argument list is too long."); break;
+          ERROR_INFO("E2BIG", "inputs",
+                     "Argument list is too long."); break;
         case GAL_ERROR_CODE_EINVAL:
-          ERROR_INFO("Invalid argument (if not in below)."); break;
+          ERROR_INFO("EINVAL", "inputs",
+                     "Invalid argument (if not in below)."); break;
         case GAL_ERROR_CODE_EDOM:
-          ERROR_INFO("Numerical input value out of range."); break;
+          ERROR_INFO("EDOM", "inputs",
+                     "Numerical input value out of range."); break;
         case GAL_ERROR_CODE_INDEX:
-          ERROR_INFO("An array index is out of range."); break;
+          ERROR_INFO("INDEX", "inputs",
+                     "An array index is out of range."); break;
         case GAL_ERROR_CODE_ENAMETOOLONG:
-          ERROR_INFO("Given name is too long."); break;
+          ERROR_INFO("ENAMETOOLONG", "inputs",
+                     "Given name is too long."); break;
         case GAL_ERROR_CODE_NAME:
-          ERROR_INFO("Given name is not found."); break;
+          ERROR_INFO("NAME", "inputs",
+                     "Given name is not found."); break;
         case GAL_ERROR_CODE_TYPE:
-          ERROR_INFO("Given type is not expected."); break;
+          ERROR_INFO("TYPE", "inputs",
+                     "Given type is not expected."); break;
 
         /* Requested operation. */
         case GAL_ERROR_CODE_EPERM:
-          ERROR_INFO("Requested operation not permitted"); break;
+          ERROR_INFO("EPERM", "request-op",
+                     "Requested operation not permitted"); break;
         case GAL_ERROR_CODE_ENOTSUPP:
-          ERROR_INFO("Requested operation not supported."); break;
+          ERROR_INFO("ENOTSUPP", "request-op",
+                     "Requested operation not supported."); break;
         case GAL_ERROR_CODE_ENOSYS:
-          ERROR_INFO("Requested operation not implemented."); break;
+          ERROR_INFO("ENOSYS", "request-op",
+                     "Requested operation not implemented."); break;
         case GAL_ERROR_CODE_ESRCH:
-          ERROR_INFO("No such process/function."); break;
+          ERROR_INFO("ESRCH", "request-op",
+                     "No such process/function."); break;
         case GAL_ERROR_CODE_EGREGIOUS:
-          ERROR_INFO("The requested operation is not clear."); break;
+          ERROR_INFO("EGREGIOUS", "request-op",
+                     "The requested operation is not clear."); break;
         case GAL_ERROR_CODE_ENOPKG:
-          ERROR_INFO("Necessary lib (package) not installed."); break;
+          ERROR_INFO("ENOPKG", "request-op",
+                     "Necessary lib (package) not installed."); break;
 
         /* Output values. */
         case GAL_ERROR_CODE_ZERODIVISION:
-          ERROR_INFO("Division or modulo by zero, all types."); break;
+          ERROR_INFO("ZERODIVISION", "output",
+                     "Division or modulo by zero, all types."); break;
         case GAL_ERROR_CODE_ERANGE:
-          ERROR_INFO("Numerical output value out of range."); break;
+          ERROR_INFO("ERANGE", "output",
+                     "Numerical output value out of range."); break;
         case GAL_ERROR_CODE_EOVERFLOW:
-          ERROR_INFO("Output value has overflowed."); break;
+          ERROR_INFO("EOVERFLOW", "output",
+                     "Output value has overflowed."); break;
 
         /* External interruptions. */
         case GAL_ERROR_CODE_EINTR:
-          ERROR_INFO("Interrupted system call or by signal."); break;
+          ERROR_INFO("EINTR", "external",
+                     "Interrupted system call or by signal."); break;
         case GAL_ERROR_CODE_ENETDOWN:
-          ERROR_INFO("Network is down."); break;
+          ERROR_INFO("ENETDOWN", "external", "Network is down."); break;
         case GAL_ERROR_CODE_ENETUNREACH:
-          ERROR_INFO("Network is not reachable."); break;
+          ERROR_INFO("ENETUNREACH", "external",
+                     "Network is not reachable."); break;
         case GAL_ERROR_CODE_KEYBOARD:
-          ERROR_INFO("Keyboard interrupt, e.g., Ctrl+C)"); break;
+          ERROR_INFO("KEYBOARD", "external",
+                     "Keyboard interrupt, e.g., Ctrl+C)"); break;
 
         /* Operational errors (in the middle of the function). */
         case GAL_ERROR_CODE_ERRLISTFULL:
-          ERROR_INFO("Error list not empty, not continuing."); break;
+          ERROR_INFO("ERRLISTFULL", "operation",
+                     "Error list not empty, not continuing."); break;
         case GAL_ERROR_CODE_ERRNOTALLOC:
-          ERROR_INFO("Couldn't allocate error struct."); break;
+          ERROR_INFO("ERRNOTALLOC", "operation",
+                     "Couldn't allocate error struct."); break;
         case GAL_ERROR_CODE_BUG:
-          ERROR_INFO("Unexpected situation, a bug!"); break;
+          ERROR_INFO("BUG", "operation",
+                     "Unexpected situation, a bug!"); break;
         case GAL_ERROR_CODE_ENOMEM:
-          ERROR_INFO("Cannot allocate memory."); break;
+          ERROR_INFO("ENOMEM", "operation",
+                     "Cannot allocate memory."); break;
         case GAL_ERROR_CODE_ETIMEDOUT:
-          ERROR_INFO("Operation has taken too long."); break;
+          ERROR_INFO("ETIMEDOUT", "operation",
+                     "Operation has taken too long."); break;
         case GAL_ERROR_CODE_RECURSION:
-          ERROR_INFO("Maximum depth of recursion."); break;
+          ERROR_INFO("RECURSION", "operation",
+                     "Maximum depth of recursion."); break;
         case GAL_ERROR_CODE_SYSTEMEXIT:
-          ERROR_INFO("system() function crashed."); break;
+          ERROR_INFO("SYSTEMEXIT", "operation",
+                     "system() function crashed."); break;
 
         default:
           error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at '%s' "
@@ -239,7 +286,9 @@ gal_error_code_info(void *junk)
     }
 
   /* Put the information as a second column and return. */
-  codes->next=info;
+  codes->next=names;
+  names->next=cat;
+  cat->next=info;
   return codes;
 }
 
