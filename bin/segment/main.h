@@ -64,11 +64,12 @@ struct segmentparams
 
   float            minskyfrac;  /* Undetected area min. frac. in tile.    */
   uint8_t              minima;  /* Build clumps from their minima, maxima.*/
+  uint8_t   numsimilarazimuth;  /* Stop the growth along wrong gradient.  */
   size_t            snminarea;  /* Minimum area for segmentation.         */
   uint8_t             checksn;  /* Save the clump S/N values to a file.   */
   size_t          minnumfalse;  /* Min No. of det/seg for true quantile.  */
   float               snquant;  /* Quantile of clumps in sky for true S/N.*/
-  uint8_t    keepmaxnearriver;  /* Keep clumps with a peak near a river.  */
+  uint8_t      nomaxnearriver;  /* Remove clumps with a peak near a river.*/
   float         clumpsnthresh;  /* Clump S/N threshold.                   */
   uint8_t           noobjects;  /* Finish after finding true clumps.      */
   float               gthresh;  /* Multiple of STD to stop growing clumps.*/

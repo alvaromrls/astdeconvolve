@@ -290,6 +290,19 @@ struct argp_option program_options[] =
       GAL_OPTIONS_NOT_SET
     },
     {
+      "numsimilarazimuth",
+      UI_KEY_NUMSIMILARAZIMUTH,
+      "INT",
+      0,
+      "Minimum area of clumps for S/N estimation.",
+      UI_GROUP_SEGMENTATION,
+      &p->numsimilarazimuth,
+      GAL_TYPE_UINT8,
+      GAL_OPTIONS_RANGE_GE_0,
+      GAL_OPTIONS_MANDATORY,
+      GAL_OPTIONS_NOT_SET
+    },
+    {
       "snminarea",
       UI_KEY_SNMINAREA,
       "INT",
@@ -342,13 +355,13 @@ struct argp_option program_options[] =
       GAL_OPTIONS_NOT_SET
     },
     {
-      "keepmaxnearriver",
-      UI_KEY_KEEPMAXNEARRIVER,
+      "nomaxnearriver",
+      UI_KEY_NOMAXNEARRIVER,
       0,
       0,
-      "Keep clumps with peak touching a river.",
+      "Remove clumps with peak touching a river.",
       UI_GROUP_SEGMENTATION,
-      &p->keepmaxnearriver,
+      &p->nomaxnearriver,
       GAL_OPTIONS_NO_ARG_TYPE,
       GAL_OPTIONS_RANGE_0_OR_1,
       GAL_OPTIONS_NOT_MANDATORY,

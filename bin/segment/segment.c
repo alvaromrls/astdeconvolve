@@ -801,7 +801,8 @@ segment_on_threads(void *in_prm)
   /* Initialize the general parameters for this thread. */
   cltprm.clprm = clprm;
 
-  /* Go over all the detections given to this thread (counting from zero.) */
+  /* Go over all the detections given to this thread (counting from
+     zero.) */
   for(i=0; tprm->indexs[i] != GAL_BLANK_SIZE_T; ++i)
     {
       /* Set the ID of this detection, note that for the threads, we
@@ -814,7 +815,7 @@ segment_on_threads(void *in_prm)
 
       /* The 'topinds' array is only necessary when the user wants to
          ignore true clumps with a peak touching a river. */
-      if(p->keepmaxnearriver==0)
+      if(p->nomaxnearriver==1)
         {
           /* Allocate the list of local maxima. For each clump there is
              going to be one local maxima. But we don't know the number of
@@ -832,11 +833,13 @@ segment_on_threads(void *in_prm)
       /* Find the clumps over this region. */
       cltprm.numinitclumps=gal_label_watershed(p->conv, cltprm.indexs,
                                                p->clabel, cltprm.topinds,
-                                               !p->minima);
+                                               !p->minima,
+                                               p->numsimilarazimuth);
 
 
-      /* Set all the river pixels to zero (we don't need them any more in
-         the clumps image).  */
+      /* Set all the river pixels to the initial value (we don't need them
+         any more in the clumps image). Note that unlike the noisy region,
+         here we only reset the rivers, not the dams. */
       sf=(s=cltprm.indexs->array) + cltprm.indexs->size;
       do
         if( clabel[*s]==GAL_LABEL_RIVER ) clabel[*s]=GAL_LABEL_INIT;
@@ -851,7 +854,8 @@ segment_on_threads(void *in_prm)
          Note that the array of 'gal_data_t' that keeps the S/N table for
          each detection is allocated before threading starts. However, when
          the user wants to inspect the steps, this function is called
-         multiple times. So we need to avoid over-writing the allocations. */
+         multiple times. So we need to avoid over-writing the
+         allocations. */
       if( clprm->sn[ cltprm.id ].dsize==NULL )
         {
           /* Calculate the S/N table. */
@@ -859,11 +863,12 @@ segment_on_threads(void *in_prm)
           cltprm.snind = ( cltprm.clprm->snind
                            ? &cltprm.clprm->snind[ cltprm.id ]
                            : NULL );
-          gal_label_clump_significance(p->clumpvals, p->std, p->clabel,
-                                       cltprm.indexs, &p->cp.tl,
+          gal_label_clump_significance(p->input, p->conv, p->std,
+                                       p->clabel, cltprm.indexs, &p->cp.tl,
                                        cltprm.numinitclumps, p->snminarea,
                                        p->variance, clprm->sky0_det1,
-                                       cltprm.sn, cltprm.snind);
+                                       cltprm.sn, cltprm.snind,
+                                       p->cpscorr);
 
           /* If it didn't succeed, then just set the S/N table to NULL. */
           if( cltprm.clprm->sn[ cltprm.id ].size==0 )
@@ -923,7 +928,7 @@ segment_on_threads(void *in_prm)
               /* Grow the true clumps over the detection. */
               clumps_grow_prepare_initial(&cltprm);
               if(cltprm.diffuseindexs->size)
-                gal_label_grow_indexs(p->olabel, cltprm.diffuseindexs, 1, 1);
+                gal_label_grow_indexs(p->olabel,cltprm.diffuseindexs,1,1);
               if(clprm->step==3)
                 { gal_data_free(cltprm.diffuseindexs); continue; }
 
@@ -1066,8 +1071,7 @@ segment_save_sn_table(struct clumps_params *clprm)
   clumpinobj->next=sn;
   objind->next=clumpinobj;
   gal_table_write(objind, NULL, comments, p->cp.tableformat,
-                  p->clumpsn_d_name, "DET_CLUMP_SN", 0, 0);
-
+                  p->clumpsn_d_name, "DET_CLUMP_SN", 0);
 
   /* Clean up. */
   gal_data_free(sn);
@@ -1136,6 +1140,7 @@ segment_reproducible_labels(struct segmentparams *p)
 
 
 
+
 /* Find true clumps over the detected regions. */
 static void
 segment_detections(struct segmentparams *p)
@@ -1146,8 +1151,8 @@ segment_detections(struct segmentparams *p)
 
 
   /* Get the indexs of all the pixels in each label. */
-  labindexs=gal_label_indexs(p->olabel, p->numdetections, p->cp.minmapsize,
-                             p->cp.quietmmap);
+  labindexs=gal_label_indexs(p->olabel, p->numdetections,
+                             p->cp.minmapsize, p->cp.quietmmap);
 
 
   /* Initialize the necessary thread parameters. Note that since the object
@@ -1189,7 +1194,8 @@ segment_detections(struct segmentparams *p)
              /* When the user just wants to check the clump S/N values,
                 then break out of the loop, we don't need the rest of the
                 process any more. */
-             && !( (p->checksn && !p->continueaftercheck) && clprm.step>1 ) )
+             && !( (p->checksn && !p->continueaftercheck)
+                   && clprm.step>1 ) )
         {
           /* Reset the temporary copy of clabel back to its original. */
           if(clprm.step>1)
@@ -1305,10 +1311,10 @@ segment_detections(struct segmentparams *p)
               break;
 
             default:
-              error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s so "
-                    "we can address the issue. The value %d is not "
-                    "recognized for clprm.step", __func__, PACKAGE_BUGREPORT,
-                    clprm.step);
+              error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s "
+                    "so we can address the issue. The value %d is not "
+                    "recognized for clprm.step", __func__,
+                    PACKAGE_BUGREPORT, clprm.step);
             }
 
           /* Write the demonstration array into the check image.  */
@@ -1441,7 +1447,7 @@ segment_output(struct segmentparams *p)
          its square root before writing it. We want this output to be a
          standard deviation dataset. */
       if(p->variance)
-        { ff=(f=p->std->array)+p->std->size; do *f=sqrt(*f); while(++f<ff); }
+        {ff=(f=p->std->array)+p->std->size; do *f=sqrt(*f); while(++f<ff);}
 
       /* Write the STD dataset into the output file. */
       p->std->name="SKY_STD";
@@ -1500,8 +1506,7 @@ segment(struct segmentparams *p)
   segment_initialize(p);
 
 
-  /* If a check segmentation image was requested, then start filling it
-     in. */
+  /* If '--checksegmentation' was requested, then start filling it in. */
   if(p->segmentationname)
     {
       gal_fits_img_write(p->input, p->segmentationname, NULL, 0);

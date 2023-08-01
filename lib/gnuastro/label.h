@@ -65,19 +65,22 @@ gal_label_indexs(gal_data_t *labels, size_t numlabs, size_t minmapsize,
 
 size_t
 gal_label_watershed(gal_data_t *values, gal_data_t *indexs,
-                    gal_data_t *label, size_t *topinds, int min0_max1);
+                    gal_data_t *labels, size_t *topinds,
+                    int min0_max1, uint8_t num_similar_azimuth);
 
 void
-gal_label_clump_significance(gal_data_t *values, gal_data_t *std,
-                             gal_data_t *label, gal_data_t *indexs,
+gal_label_clump_significance(gal_data_t *values, gal_data_t *index_values,
+                             gal_data_t *std, gal_data_t *label,
+                             gal_data_t *indexs,
                              struct gal_tile_two_layer_params *tl,
-                             size_t numclumps, size_t minarea, int variance,
-                             int keepsmall, gal_data_t *sig,
-                             gal_data_t *sigind);
+                             size_t numclumps, size_t minarea,
+                             int variance, int sky0_det1,
+                             gal_data_t *sig, gal_data_t *sigind,
+                             float cpscorr);
 
 void
-gal_label_grow_indexs(gal_data_t *labels, gal_data_t *indexs, int withrivers,
-                      int connectivity);
+gal_label_grow_indexs(gal_data_t *labels, gal_data_t *indexs,
+                      int withrivers, int connectivity);
 
 
 

@@ -167,6 +167,8 @@ gal_type_out(int first_type, int second_type);
 /*************************************************************
  **************         To/from string         ***************
  *************************************************************/
+uint8_t
+gal_type_bit_number_active(void *ptr, uint8_t type);
 
 char *
 gal_type_bit_string(void *in, size_t size);

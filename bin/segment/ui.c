@@ -694,7 +694,7 @@ ui_check_size(gal_data_t *base, gal_data_t *comp, size_t numtiles,
 /* Subtract 'sky' from the input dataset depending on its size (it may be
    the whole array or a tile-values array).. */
 static void
-ui_subtract_sky(gal_data_t *in, gal_data_t *sky,
+ui_sky_subtract(gal_data_t *in, gal_data_t *sky,
                 struct gal_tile_two_layer_params *tl)
 {
   size_t tid;
@@ -736,6 +736,60 @@ ui_subtract_sky(gal_data_t *in, gal_data_t *sky,
 
 
 
+static float
+ui_std_minimum(gal_data_t *in, gal_data_t *std,
+               struct gal_tile_two_layer_params *tl)
+{
+  size_t tid;
+  gal_data_t *min;
+  float *farr=std->array;
+  float minstd=NAN, tilemin;
+
+  /* The sky standard deviation is a single value. */
+  if( std->size==1 ) minstd=farr[0];
+
+  /* The sky standard deviation is an array the same size as the image. */
+  else if( gal_dimension_is_different(in, std)==0)
+    {
+      min=gal_statistics_minimum(std);
+      minstd=*(float *)(min->array);
+      gal_data_free(min);
+    }
+
+  /* It is the same size as the number of tiles: this is a tessellation. */
+  else if( tl->tottiles==std->size )
+    {
+      /* Go over all the tiles and initialize minstd to the largest
+         possible value. */
+      gal_type_min(GAL_TYPE_FLOAT32, &minstd);
+      for(tid=0; tid<tl->tottiles; ++tid)
+        {
+          /* Minimum standard deviation within this tile. */
+          min=gal_statistics_minimum(&tl->tiles[tid]);
+          tilemin=*(float *)(min->array);
+          gal_data_free(min);
+
+          /* If this tile's minimum is smaller than any previous tile,
+             then replace it. */
+          if(tilemin<minstd) minstd=tilemin;
+        }
+    }
+
+  /* The size must have been checked before, so if control reaches here, we
+     have a bug! */
+  else
+    error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s to fix "
+          "the problem. For some reason, the size doesn't match", __func__,
+          PACKAGE_BUGREPORT);
+
+  /* Return the smallest standard deviation. */
+  return minstd;
+}
+
+
+
+
+
 /* The Sky and Sky standard deviation images can be a 'oneelempertile'
    image (only one element/pixel for a tile). So we need to do some extra
    checks on them (after reading the tessellation). */
@@ -769,12 +823,12 @@ ui_read_std_and_sky(struct segmentparams *p)
       /* Make sure a HDU is also given. */
       if(p->stdhdu==NULL)
         error(EXIT_FAILURE, 0, "no value given to '--stdhdu'.\n\n"
-              "When the Sky standard deviation is a dataset, it is mandatory "
-              "specify which HDU/extension it is present in. The file can "
-              "be specified explicitly with '--std'. If not, segment will "
-              "use the file given to '--detection'. If that is also not "
-              "called, it will look into the main input file (with no "
-              "option)");
+              "When the Sky standard deviation is a dataset, it is "
+              "mandatory specify which HDU/extension it is present in. "
+              "The file can be specified explicitly with '--std'. If "
+              "not, segment will use the file given to '--detection'. "
+              "If that is also not called, it will look into the main "
+              "input file (with no option)");
 
       /* Read the STD image. */
       p->std=gal_array_read_one_ch_to_type(p->usedstdname, p->stdhdu,
@@ -787,34 +841,6 @@ ui_read_std_and_sky(struct segmentparams *p)
       /* Make sure it has the correct size. */
       ui_check_size(p->input, p->std, tl->tottiles, p->inputname, p->cp.hdu,
                     p->usedstdname, p->stdhdu);
-    }
-
-  /* When the Standard deviation dataset (not single value) is made by
-     NoiseChisel, it puts three basic statistics of the pre-interpolation
-     distribution of standard deviations in 'MEDSTD', 'MINSTD' and
-     'MAXSTD'. The 'MEDSTD' in particular is most important because it
-     can't be inferred after the interpolations and it can be useful in
-     MakeCatalog later to give a more accurate estimate of the noise
-     level. So if they are present, we will read them here and write them
-     to the STD output (which is created when '--rawoutput' is not
-     given). */
-  if(!p->rawoutput && p->std->size>1)
-    {
-      keys[0].next=&keys[1];
-      keys[1].next=&keys[2];
-      keys[2].next=NULL;
-      keys[0].array=&p->medstd;     keys[0].name="MEDSTD";
-      keys[1].array=&p->minstd;     keys[1].name="MINSTD";
-      keys[2].array=&p->maxstd;     keys[2].name="MAXSTD";
-      keys[0].type=keys[1].type=keys[2].type=GAL_TYPE_FLOAT32;
-      gal_fits_key_read(p->usedstdname, p->stdhdu, keys, 0, 0,
-                        "--stdhdu");
-      if(keys[0].status) p->medstd=NAN;
-      if(keys[1].status) p->minstd=NAN;
-      if(keys[2].status) p->maxstd=NAN;
-      keys[0].name=keys[1].name=keys[2].name=NULL;
-      keys[0].array=keys[1].array=keys[2].array=NULL;
-      gal_data_array_free(keys, 3, 1);
     }
 
   /* Similar to '--std' above. */
@@ -852,15 +878,53 @@ ui_read_std_and_sky(struct segmentparams *p)
         }
 
       /* Subtract the sky from the input. */
-      ui_subtract_sky(p->input, sky, tl);
+      ui_sky_subtract(p->input, sky, tl);
 
       /* If a convolved image is given, subtract the Sky from that too. */
-      if(p->conv)
-        ui_subtract_sky(p->conv, sky, tl);
+      if(p->conv) ui_sky_subtract(p->conv, sky, tl);
 
       /* Clean up. */
       gal_data_free(sky);
     }
+
+  /* The basic statistics of the standard deviation are necessary for two
+     reasons:
+     - To see if a correction is necessary in the signal-to-noise ratio
+       equations (when the standard deviation is less than 1).
+     - To write into the output standard deviation image (for
+       MakeCatalog). Otherwise, MakeCatalog will have to calculate these
+       values (which will slow it down). */
+  if(p->std->size==1)   /* Standard deviation is a value. */
+    p->medstd = p->minstd = p->maxstd = *(float *)(p->std->array);
+  else                  /* Standard deviation is an array. */
+    {
+      /* Read the keywords. */
+      keys[0].next=&keys[1];
+      keys[1].next=&keys[2];
+      keys[2].next=NULL;
+      keys[0].array=&p->medstd;     keys[0].name="MEDSTD";
+      keys[1].array=&p->minstd;     keys[1].name="MINSTD";
+      keys[2].array=&p->maxstd;     keys[2].name="MAXSTD";
+      keys[0].type=keys[1].type=keys[2].type=GAL_TYPE_FLOAT32;
+      gal_fits_key_read(p->usedstdname, p->stdhdu, keys, 0, 0,
+                        "--stdhdu");
+      if(keys[0].status) p->medstd=NAN;
+      if(keys[1].status) p->minstd=NAN;
+      if(keys[2].status) p->maxstd=NAN;
+      keys[0].name=keys[1].name=keys[2].name=NULL;
+      keys[0].array=keys[1].array=keys[2].array=NULL;
+      gal_data_array_free(keys, 3, 1);
+
+      /* If the minimum standard deviation is not given, measure it (for
+         the S/N equation correction factor). */
+      if( isnan(p->minstd) )
+        p->minstd=ui_std_minimum(p->input, p->std, tl);
+    }
+
+  /* If the minimum standard deviation is larger than 1, we do not need any
+     correction in the signal-to-noise derivation. Otherwise, we should put
+     the smallest standard deviation here. */
+  p->cpscorr = p->minstd>1 ? 1.0f : p->minstd;
 
   /* Return the sky value (possibly necessary in verbose mode). */
   return skyval;

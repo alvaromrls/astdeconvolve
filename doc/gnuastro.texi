@@ -6629,7 +6629,7 @@ For more on Query, see @ref{Query}.
 
 @example
 $ astquery gaia --dataset=dr3 --overlapwith=flat/67510.fits \
-           --range=phot_g_mean_mag,-inf,10 \
+           --range=phot_g_mean_mag,-999,10 \
            --output=flat/67510-bright.fits
 @end example
 
@@ -19114,6 +19114,13 @@ The order of the output columns will be the same order given to the option or in
 This option is not mandatory, if no specific columns are requested, all the input table columns are output.
 When this option is called multiple times, it is possible to output one column more than once.
 
+In case you want all the columns within the input table, you can use the special @code{_all} value to this option.
+This can come in handy when your input table has many columns and you want to add some new columns to it.
+For example with the command below you keep all existing columns of @file{table.fits} in the output, but also add a new one that is the sum of the first and second columns.
+
+@example
+$ asttable -c_all -c'arith $1 $2 +' table.fits
+@end example
 
 @cartouche
 @noindent

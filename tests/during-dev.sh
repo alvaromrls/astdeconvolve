@@ -1,3 +1,13 @@
+#####################################################3
+#####################################################3
+#####################################################3
+#  Add tests with the HST and SDSS-M51 images to see why there was no
+#  clumps in the main detection of the LIGHTS image.
+#
+#####################################################3
+#####################################################3
+#####################################################3
+
 #! /bin/bash
 # Script to rebuild and test a utility during development.
 #
@@ -71,9 +81,11 @@
 # space characters in them, quote the full value
 numjobs=8
 builddir=build
-outdir=
-
-
+#outdir=~/tmp/segment-bug/build/debug
+#outdir=~/tmp/segment-bug/build/counts-per-sec
+outdir=~/tmp/segment-bug/lights/full
+#outdir=~/tmp/segment-bug/lights/small
+#outdir=~/tmp/segment-bug/lights/spiral
 
 # Set the utility name, along with its arguments and options. NOTE, for
 # multiple arguments and options, please put them all between quotation
@@ -87,9 +99,9 @@ outdir=
 # the script, you have to add a line under the line below
 #    'if [ -f "$utility" ]; then rm "$utility"; fi'
 # that will delete that particular program.
-utilname=
-arguments=
-options=
+utilname=segment
+arguments=nc.fits
+options="--convolved=conv.fits -oseg.fits"
 
 
 
@@ -207,7 +219,25 @@ if make -j$numjobs -C "$builddir"; then
     fi
 
     # Run the built utility with the given arguments and options.
+    rm -f label.fits
     "$utility" $arguments $options $extraopts
+
+
+#    astarithmetic seg_segcheck.fits -hCONVOLVED set-i \
+#                  seg_segcheck.fits -hDET_CLUMPS_TRUE set-c \
+#                  seg_segcheck.fits -hSKY_CLUMPS_FOR_SN set-s \
+#                  i c 0 gt nan where tofilefree-check/mask-clumps.fits \
+#                  i s 1 lt nan where tofilefree-check/mask-clumps-sky.fits \
+#                  i c 1 lt nan where -o check/mask-diffuse.fits -q
+#
+#    astscript-fits-view seg_segcheck.fits mask-clumps.fits \
+#                        mask-diffuse.fits \
+#                        --ds9extra="-lock scalelimits yes"
+
+    # TO LOOK INTO: with the new change of comparing the maximum 5 pixels
+    # of the object and rivers, purity is good, but completeness bad!
+    # There are several missed clumps when their peak is close to the
+    # river.
 
     # Clean up.
     rm -rf .gnuastro

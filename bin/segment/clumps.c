@@ -286,7 +286,8 @@ clumps_correct_sky_labels_for_check(struct clumps_thread_params *cltprm,
   else
     /* There were no usable clumps in this tile, so just set all the pixels
        larger than zero (a clump) to 'GAL_LABEL_INIT'. */
-    GAL_TILE_PARSE_OPERATE( tile, NULL, 0, 1, {*i=*i>0?GAL_LABEL_INIT:*i;} );
+    GAL_TILE_PARSE_OPERATE( tile, NULL, 0, 1,
+                            {*i=*i>0?GAL_LABEL_INIT:*i;} );
 }
 
 
@@ -429,7 +430,8 @@ clumps_find_make_sn_table(void *in_prm)
                       if(cltprm.id==282) *i+=2;
                   */
                       indarr[c++]=gal_pointer_num_between(p->clabel->array,
-                                                          i, p->clabel->type);
+                                                          i,
+                                                          p->clabel->type);
                   /*
                     }
                   else
@@ -454,13 +456,14 @@ clumps_find_make_sn_table(void *in_prm)
           cltprm.numinitclumps=gal_label_watershed(p->conv, cltprm.indexs,
                                                    p->clabel,
                                                    cltprm.topinds,
-                                                   !p->minima);
+                                                   !p->minima,
+                                                   p->numsimilarazimuth);
 
 
           /* Set all river pixels to GAL_LABEL_INIT (to be distinguishable
              from the detected regions). */
           GAL_TILE_PO_OISET( int32_t, int, tile, NULL, 0, 1,
-                             {if(*i==GAL_LABEL_RIVER) *i=GAL_LABEL_INIT;} );
+                      { if(*i==GAL_LABEL_RIVER) *i=GAL_LABEL_INIT;} );
 
 
           /* For a check, the step variable will be set. */
@@ -473,11 +476,11 @@ clumps_find_make_sn_table(void *in_prm)
           cltprm.snind = ( cltprm.clprm->snind
                            ? &cltprm.clprm->snind[cltprm.id]
                            : NULL );
-          gal_label_clump_significance(p->clumpvals, p->std, p->clabel,
+          gal_label_clump_significance(p->input, p->conv, p->std, p->clabel,
                                        cltprm.indexs, &p->cp.tl,
                                        cltprm.numinitclumps, p->snminarea,
                                        p->variance, clprm->sky0_det1,
-                                       cltprm.sn, cltprm.snind);
+                                       cltprm.sn, cltprm.snind, p->cpscorr);
 
 
           /* If the user wanted to check the steps, remove the clumps that
@@ -694,14 +697,14 @@ clumps_true_find_sn_thresh(struct segmentparams *p)
           "regions. This is smaller than the requested minimum number of "
           "false/reference clumps (%zu, value to the '--minnumfalse' "
           "option).\n\n"
-          "There are several ways to address the problem. The best and most "
-          "highly recommended is to use a larger input if possible (when the "
-          "input is a crop from a larger dataset). If that is not the case, "
-          "or it doesn't solve the problem, you need to loosen the "
-          "parameters (and therefore cause more scatter/bias in the final "
-          "result). Thus don't loosen them too much. Recall that you can "
-          "see all the option values to Gnuastro's programs by appending "
-          "'-P' to the end of your command.\n\n"
+          "There are several ways to address the problem. The best and "
+          "most highly recommended is to use a larger input if possible "
+          "(when the input is a crop from a larger dataset). If that is "
+          "not the case, or it doesn't solve the problem, you need to "
+          "loosen the parameters (and therefore cause more scatter/bias "
+          "in the final result). Thus don't loosen them too much. Recall "
+          "that you can see all the option values to Gnuastro's programs "
+          "by appending '-P' to the end of your command.\n\n"
           "  * Slightly decrease '--largetilesize' to have more tiles.\n"
           "  * Decrease '--minskyfrac' (currently %g) to look into more "
           "tiles.\n"
@@ -723,8 +726,8 @@ clumps_true_find_sn_thresh(struct segmentparams *p)
 
   /* Allocate the space to keep all the S/N values. */
   sn=gal_data_alloc(NULL, GAL_TYPE_FLOAT32, 1, &numsn, NULL, 0,
-                    p->cp.minmapsize, p->cp.quietmmap, "CLUMP_S/N", "ratio",
-                    "Signal-to-noise ratio");
+                    p->cp.minmapsize, p->cp.quietmmap, "CLUMP_S/N",
+                    "ratio", "Signal-to-noise ratio");
   snind = ( p->checksn
             ? gal_data_alloc(NULL, GAL_TYPE_INT32, 1, &numsn, NULL, 0,
                              p->cp.minmapsize, p->cp.quietmmap, "CLUMP_ID",
@@ -837,19 +840,19 @@ clumps_det_keep_true_relabel(struct clumps_thread_params *cltprm)
       lf=(l=newlabs)+cltprm->numinitclumps+1;
       do *l++=GAL_LABEL_INIT; while(l<lf);
 
-      /* Set the new labels. Here we will also be removing clumps with a peak
-         that touches a river pixel. */
-      if(p->keepmaxnearriver)
+      /* Set the new labels. If the user has asked for it, we will also be
+         removing clumps with a peak that touches a river pixel. */
+      if(p->nomaxnearriver==0)
         {
           for(i=1;i<cltprm->numinitclumps+1;++i)
             if( sn[i] > p->clumpsnthresh ) newlabs[i]=curlab++;
         }
-      else
+      else /* Remove those where the maximum is touching a river. */
         {
           for(i=1;i<cltprm->numinitclumps+1;++i)
             {
-              /* Check if all the neighbors of this top element are
-                 touching a river or not. */
+              /* Check if the neighbors of this top element are touching a
+                 river or not. */
               istouching=0;
               GAL_DIMENSION_NEIGHBOR_OP(cltprm->topinds[i], ndim, dsize,
                         ndim, dinc, { if(clabel[nind]<1) istouching=1; });

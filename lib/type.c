@@ -351,6 +351,58 @@ gal_type_out(int first_type, int second_type)
 /*************************************************************
  **************         To/from string         ***************
  *************************************************************/
+/* Counting bits from [1]: "Brian Kernighan's method goes through as many
+   iterations as there are set bits. So if we have a 32-bit word with only
+   the high bit set, then it will only go once through the loop.
+
+   Published in 1988, the C Programming Language 2nd Ed. (by Brian
+   W. Kernighan and Dennis M. Ritchie) mentions this in exercise 2-9. On
+   April 19, 2006 Don Knuth pointed out to me that this method "was first
+   published by Peter Wegner in CACM 3 (1960), 322. (Also discovered
+   independently by Derrick Lehmer and published in 1964 in a book edited
+   by Beckenbach.)"
+
+   [1] https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetKernighan
+   [2] https://doi.org/10.1145/367236.367286 */
+uint8_t
+gal_type_bit_number_active(void *ptr, uint8_t type)
+{
+  uint16_t u16;
+  uint32_t u32;
+  uint64_t u64;
+  uint8_t u8, c;
+
+  /* Since we just want to count bits, only the width of the byte is
+     relevant, so whether it is  */
+  switch(type)
+    {
+    case GAL_TYPE_INT8:
+    case GAL_TYPE_UINT8:
+      u8=((uint8_t *)(ptr))[0];   for(c=0; u8; c++)  u8 &= u8-1;   break;
+    case GAL_TYPE_INT16:
+    case GAL_TYPE_UINT16:
+      u16=((uint16_t *)(ptr))[0]; for(c=0; u16; c++) u16 &= u16-1; break;
+    case GAL_TYPE_INT32:
+    case GAL_TYPE_UINT32:
+    case GAL_TYPE_FLOAT32:
+      u32=((uint32_t *)(ptr))[0]; for(c=0; u32; c++) u32 &= u32-1; break;
+    case GAL_TYPE_INT64:
+    case GAL_TYPE_UINT64:
+    case GAL_TYPE_FLOAT64:
+      u64=((uint64_t *)(ptr))[0]; for(c=0; u64; c++) u64 &= u64-1; break;
+    default:
+      error(EXIT_FAILURE, 0, "%s: the type id of %u is not recognized",
+            __func__, type);
+    }
+
+  /* Return the final count. */
+  return c;
+}
+
+
+
+
+
 /* Write the bit (0 or 1) contents of 'in' into a string ready for
    printing. 'size' is used to determine the number of bytes to print. The
    output string will be dynamically allocated within this function. This
@@ -363,18 +415,25 @@ gal_type_bit_string(void *in, size_t size)
 {
   size_t i;
   char *byte=in;
-  char *str=gal_pointer_allocate(GAL_TYPE_UINT8, 8*size+1, 0, __func__,
+
+  /* 9 characters are being assigned for every 8-bits because we want to
+     separate each byte by a space from the next. */
+  char *str=gal_pointer_allocate(GAL_TYPE_UINT8, 9*size+1, 0, __func__,
                                  "str");
 
-  /* Print the bits into the allocated string. This was inspired from
-
+  /* Print the bits into the allocated string. This was inspired from:
      http://stackoverflow.com/questions/111928/is-there-a-printf-converter-to-print-in-binary-format */
   for(i=0;i<size;++i)
-    sprintf(str+i*8, "%c%c%c%c%c%c%c%c ",
-           (byte[i] & 0x80 ? '1' : '0'), (byte[i] & 0x40 ? '1' : '0'),
-           (byte[i] & 0x20 ? '1' : '0'), (byte[i] & 0x10 ? '1' : '0'),
-           (byte[i] & 0x08 ? '1' : '0'), (byte[i] & 0x04 ? '1' : '0'),
-           (byte[i] & 0x02 ? '1' : '0'), (byte[i] & 0x01 ? '1' : '0') );
+    sprintf(str+i*9, "%c%c%c%c%c%c%c%c%c",
+            (byte[i] & 0x80 ? '1' : '0'),
+            (byte[i] & 0x40 ? '1' : '0'),
+            (byte[i] & 0x20 ? '1' : '0'),
+            (byte[i] & 0x10 ? '1' : '0'),
+            (byte[i] & 0x08 ? '1' : '0'),
+            (byte[i] & 0x04 ? '1' : '0'),
+            (byte[i] & 0x02 ? '1' : '0'),
+            (byte[i] & 0x01 ? '1' : '0'),
+            i==size-1 ? '\0' : ' ');
 
   /* Return the allocated and filled string. */
   return str;
