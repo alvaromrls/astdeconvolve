@@ -294,10 +294,10 @@ struct argp_option program_options[] =
       UI_KEY_NUMSIMILARAZIMUTH,
       "INT",
       0,
-      "Minimum area of clumps for S/N estimation.",
+      "Num. pix. with similar azimuth to end clump.",
       UI_GROUP_SEGMENTATION,
       &p->numsimilarazimuth,
-      GAL_TYPE_UINT8,
+      GAL_TYPE_UINT32,
       GAL_OPTIONS_RANGE_GE_0,
       GAL_OPTIONS_MANDATORY,
       GAL_OPTIONS_NOT_SET

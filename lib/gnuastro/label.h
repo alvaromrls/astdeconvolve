@@ -66,7 +66,7 @@ gal_label_indexs(gal_data_t *labels, size_t numlabs, size_t minmapsize,
 size_t
 gal_label_watershed(gal_data_t *values, gal_data_t *indexs,
                     gal_data_t *labels, size_t *topinds,
-                    int min0_max1, uint8_t num_similar_azimuth);
+                    int min0_max1, uint32_t num_similar_azimuth);
 
 void
 gal_label_clump_significance(gal_data_t *values, gal_data_t *index_values,

@@ -101,7 +101,7 @@ outdir=~/tmp/segment-bug/lights/full
 # that will delete that particular program.
 utilname=segment
 arguments=nc.fits
-options="--convolved=conv.fits -oseg.fits"
+options="--convolved=conv.fits -oseg.fits --numsimilarazimuth=0"
 
 
 

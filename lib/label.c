@@ -242,7 +242,7 @@ label_watershed_azimuth(double azimuth_rad, uint8_t *bytes)
 size_t
 gal_label_watershed(gal_data_t *values, gal_data_t *indexs,
                     gal_data_t *labels, size_t *topinds,
-                    int min0_max1, uint8_t num_similar_azimuth)
+                    int min0_max1, uint32_t num_similar_azimuth)
 {
   int hasblank;
   double azimuth_rad;
