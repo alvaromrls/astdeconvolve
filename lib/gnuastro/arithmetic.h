@@ -105,6 +105,7 @@ enum gal_arithmetic_operators
   GAL_ARITHMETIC_OP_ISBLANK,      /* Similar to isnan() for floats. */
   GAL_ARITHMETIC_OP_ISNOTBLANK,   /* Inverse of 'isblank'. */
   GAL_ARITHMETIC_OP_WHERE,        /*   ?:    */
+  GAL_ARITHMETIC_OP_EQ_ONE_ON_MANY, /* Equal one with many. */
 
   GAL_ARITHMETIC_OP_BITAND,       /*   &     */
   GAL_ARITHMETIC_OP_BITOR,        /*   |     */

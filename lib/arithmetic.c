@@ -1850,6 +1850,36 @@ struct multioperandparams
 
 
 
+#define MULTIOPERAND_EQ_ONE_ON_MANY(TYPE) {                             \
+    size_t n, j=0;                                                      \
+    TYPE t, max, *o=p->out->array;                                      \
+    gal_type_max(p->list->type, &max);                                  \
+                                                                        \
+    /* Go over all the pixels assigned to this thread. */               \
+    for(tind=0; tprm->indexs[tind] != GAL_BLANK_SIZE_T; ++tind)         \
+      {                                                                 \
+        /* Initialize, 'j' is desired pixel's index. */                 \
+        n=0;                                                            \
+        t=max;                                                          \
+        j=tprm->indexs[tind];                                           \
+                                                                        \
+        for(i=1;i<p->dnum;++i)  /* Loop over each array. */             \
+          {   /* Only for integer types, b==b. */                       \
+            if( p->hasblank[i] && b==b)                                 \
+              {                                                         \
+                if( a[i][j] != b )                                      \
+                  { t = a[i][j] < t ? a[i][j] : t; ++n; }               \
+              }                                                         \
+            else { t = a[0][j]==a[i][XXX]; ++n; }                       \
+          }                                                             \
+        o[j] = n ? t : b;  /* No usable elements: set to blank. */      \
+      }                                                                 \
+  }
+
+
+
+
+
 #define MULTIOPERAND_TYPE_SET(TYPE, QSORT_F) {                          \
     TYPE b, **a;                                                        \
     gal_data_t *tmp;                                                    \
@@ -1909,6 +1939,10 @@ struct multioperandparams
       case GAL_ARITHMETIC_OP_SIGCLIP_MEDIAN:                            \
       case GAL_ARITHMETIC_OP_SIGCLIP_NUMBER:                            \
         MULTIOPERAND_SIGCLIP(TYPE);                                     \
+        break;                                                          \
+                                                                        \
+      case GAL_ARITHMETIC_OP_EQ_ONE_ON_MANY:                            \
+        MULTIOPERAND_EQ_ONE_ON_MANY(TYPE);                              \
         break;                                                          \
                                                                         \
       default:                                                          \
@@ -1986,6 +2020,7 @@ static gal_data_t *
 arithmetic_multioperand(int operator, int flags, gal_data_t *list,
                         gal_data_t *params, size_t numthreads)
 {
+  size_t *sizes;
   size_t i=0, dnum=1;
   float p1=NAN, p2=NAN;
   struct multioperandparams p;
@@ -2067,6 +2102,7 @@ arithmetic_multioperand(int operator, int flags, gal_data_t *list,
     case GAL_ARITHMETIC_OP_SIGCLIP_MEAN:   otype=GAL_TYPE_FLOAT32; break;
     case GAL_ARITHMETIC_OP_SIGCLIP_MEDIAN: otype=GAL_TYPE_FLOAT32; break;
     case GAL_ARITHMETIC_OP_SIGCLIP_NUMBER: otype=GAL_TYPE_UINT32;  break;
+    case GAL_ARITHMETIC_OP_EQ_ONE_ON_MANY: otype=GAL_TYPE_UINT8;  break;
     default:
       error(EXIT_FAILURE, 0, "%s: operator code %d isn't recognized",
             __func__, operator);
@@ -2082,7 +2118,7 @@ arithmetic_multioperand(int operator, int flags, gal_data_t *list,
                          NULL, NULL, NULL);
 
 
-  /* hasblank is used to see if a blank value should be checked for each
+  /* 'hasblank' is used to see if a blank value should be checked for each
      list element or not. */
   hasblank=gal_pointer_allocate(GAL_TYPE_UINT8, dnum, 0, __func__,
                                 "hasblank");
@@ -2267,8 +2303,8 @@ arithmetic_binary(int operator, int flags, gal_data_t *l, gal_data_t *r)
   if( l->size==0 || l->array==NULL || r->size==0 || r->array==NULL )
     {
       if(l->array==0 || l->array==NULL)
-        {   if(flags & GAL_ARITHMETIC_FLAG_FREE) gal_data_free(r); return l;}
-      else {if(flags & GAL_ARITHMETIC_FLAG_FREE) gal_data_free(l); return r;}
+        {  if(flags & GAL_ARITHMETIC_FLAG_FREE) gal_data_free(r);return l;}
+      else{if(flags & GAL_ARITHMETIC_FLAG_FREE) gal_data_free(l);return r;}
     }
 
 
@@ -2350,9 +2386,9 @@ arithmetic_binary(int operator, int flags, gal_data_t *l, gal_data_t *r)
     case GAL_ARITHMETIC_OP_BITRSH:   arithmetic_bitrsh(l, r, o);   break;
     case GAL_ARITHMETIC_OP_MODULO:   arithmetic_modulo(l, r, o);   break;
     default:
-      error(EXIT_FAILURE, 0, "%s: a bug! please contact us at %s to address "
-            "the problem. %d is not a valid operator code", __func__,
-            PACKAGE_BUGREPORT, operator);
+      error(EXIT_FAILURE, 0, "%s: a bug! please contact us at %s to "
+            "address the problem. %d is not a valid operator code",
+            __func__, PACKAGE_BUGREPORT, operator);
     }
 
 
@@ -3409,6 +3445,8 @@ gal_arithmetic_set_operator(char *string, size_t *num_operands)
     { op=GAL_ARITHMETIC_OP_ISNOTBLANK;        *num_operands=1;  }
   else if (!strcmp(string, "where"))
     { op=GAL_ARITHMETIC_OP_WHERE;             *num_operands=3;  }
+  else if (!strcmp(string, "eq-one-on-many"))
+    { op=GAL_ARITHMETIC_OP_EQ_ONE_ON_MANY;    *num_operands=-1; }
 
   /* Bitwise operators. */
   else if (!strcmp(string, "bitand"))
@@ -3535,6 +3573,7 @@ gal_arithmetic_operator_string(int operator)
     case GAL_ARITHMETIC_OP_ISBLANK:         return "isblank";
     case GAL_ARITHMETIC_OP_ISNOTBLANK:      return "isnotblank";
     case GAL_ARITHMETIC_OP_WHERE:           return "where";
+    case GAL_ARITHMETIC_OP_EQ_ONE_ON_MANY:  return "eq-one-on-many";
 
     case GAL_ARITHMETIC_OP_BITAND:          return "bitand";
     case GAL_ARITHMETIC_OP_BITOR:           return "bitor";
@@ -3815,6 +3854,7 @@ gal_arithmetic(int operator, size_t numthreads, int flags, ...)
     case GAL_ARITHMETIC_OP_SIGCLIP_MEAN:
     case GAL_ARITHMETIC_OP_SIGCLIP_MEDIAN:
     case GAL_ARITHMETIC_OP_SIGCLIP_NUMBER:
+    case GAL_ARITHMETIC_OP_EQ_ONE_ON_MANY:
       d1 = va_arg(va, gal_data_t *);
       d2 = va_arg(va, gal_data_t *);
       out=arithmetic_multioperand(operator, flags, d1, d2, numthreads);

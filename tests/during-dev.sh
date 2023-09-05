@@ -71,7 +71,7 @@
 # space characters in them, quote the full value
 numjobs=8
 builddir=build
-outdir=
+outdir=~/tmp
 
 
 
@@ -87,9 +87,11 @@ outdir=
 # the script, you have to add a line under the line below
 #    'if [ -f "$utility" ]; then rm "$utility"; fi'
 # that will delete that particular program.
-utilname=
-arguments=
-options=
+utilname=arithmetic
+values="1 5 8 10"
+c=""; for i in $values; do c="$c $i uint16 "; done
+arguments="img.fits uint16 $c $(echo $values | wc -w) eq-one-on-many"
+options="-N1"
 
 
 
