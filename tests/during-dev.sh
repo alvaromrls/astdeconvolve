@@ -1,8 +1,7 @@
 #####################################################3
 #####################################################3
 #####################################################3
-#  Add tests with the HST and SDSS-M51 images to see why there was no
-#  clumps in the main detection of the LIGHTS image.
+#  See why many clumps are lost in the M51-SDSS data
 #
 #####################################################3
 #####################################################3
@@ -83,7 +82,9 @@ numjobs=8
 builddir=build
 #outdir=~/tmp/segment-bug/build/debug
 #outdir=~/tmp/segment-bug/build/counts-per-sec
-outdir=~/tmp/segment-bug/lights/full
+#outdir=~/tmp/segment-bug/lights/full
+outdir=~/tmp/segment-bug/xdf
+outdir=~/tmp/segment-bug/sdss
 #outdir=~/tmp/segment-bug/lights/small
 #outdir=~/tmp/segment-bug/lights/spiral
 
@@ -101,7 +102,8 @@ outdir=~/tmp/segment-bug/lights/full
 # that will delete that particular program.
 utilname=segment
 arguments=nc.fits
-options="--convolved=conv.fits -oseg.fits --numsimilarazimuth=0"
+options="-oseg.fits"
+#options="--convolved=conv.fits -oseg.fits --snquant=0.95"
 
 
 

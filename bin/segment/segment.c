@@ -1071,7 +1071,7 @@ segment_save_sn_table(struct clumps_params *clprm)
   clumpinobj->next=sn;
   objind->next=clumpinobj;
   gal_table_write(objind, NULL, comments, p->cp.tableformat,
-                  p->clumpsn_d_name, "DET_CLUMP_SN", 0);
+                  p->clumpsn_d_name, "DET_CLUMP_SN", 0, 0);
 
   /* Clean up. */
   gal_data_free(sn);
