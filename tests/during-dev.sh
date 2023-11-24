@@ -71,7 +71,7 @@
 # space characters in them, quote the full value
 numjobs=8
 builddir=build
-outdir=
+outdir=~/tmp
 
 
 
@@ -87,7 +87,7 @@ outdir=
 # the script, you have to add a line under the line below
 #    'if [ -f "$utility" ]; then rm "$utility"; fi'
 # that will delete that particular program.
-utilname=
+utilname=table
 arguments=
 options=
 
@@ -207,7 +207,10 @@ if make -j$numjobs -C "$builddir"; then
     fi
 
     # Run the built utility with the given arguments and options.
-    "$utility" $arguments $options $extraopts
+    echo "10 5 10 10 0 1" \
+        | "$utility" $arguments $options $extraopts \
+                     -c'arith $1 $2 $3 $4 $5 $6 distance-on-ellipse'
+
 
     # Clean up.
     rm -rf .gnuastro

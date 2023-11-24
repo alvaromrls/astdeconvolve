@@ -144,6 +144,8 @@ arithmetic_operator_name(int operator)
         out="date-to-millisec"; break;
       case ARITHMETIC_TABLE_OP_DISTANCEONSPHERE:
         out="distance-on-sphere"; break;
+      case ARITHMETIC_TABLE_OP_DISTANCEONELLIPSE:
+        out="distance-on-ellipse"; break;
       case ARITHMETIC_TABLE_OP_SORTEDTOINTERVAL:
         out="sorted-to-interval"; break;
       case ARITHMETIC_TABLE_OP_EQJ2000TOFLAT:
@@ -218,6 +220,8 @@ arithmetic_set_operator(struct tableparams *p, char *string,
         { op=ARITHMETIC_TABLE_OP_DISTANCEFLAT; *num_operands=0; }
       else if( !strcmp(string, "distance-on-sphere"))
         { op=ARITHMETIC_TABLE_OP_DISTANCEONSPHERE; *num_operands=0; }
+      else if( !strcmp(string, "distance-on-ellipse"))
+        { op=ARITHMETIC_TABLE_OP_DISTANCEONELLIPSE; *num_operands=0; }
       else if( !strcmp(string, "sorted-to-interval"))
         { op=ARITHMETIC_TABLE_OP_SORTEDTOINTERVAL; *num_operands=0; }
       else
@@ -881,6 +885,112 @@ arithmetic_distance(struct tableparams *p, gal_data_t **stack,
 
 
 
+static void
+arithmetic_distance_ellipse_prep(struct tableparams *p, gal_data_t **stack,
+                                 int operator, gal_data_t **q_o,
+                                 gal_data_t **pa_o, gal_data_t **center_o,
+                                 gal_data_t **point_o)
+{
+  gal_data_t *q, *pa, *tmp, *center, *point;
+
+  /* First popped operand: axis ratio. */
+  q=arithmetic_stack_pop(stack, operator, NULL);
+  q=gal_data_copy_to_new_type_free(q, GAL_TYPE_FLOAT64);
+
+  /* Second popped operand is the position angle. */
+  pa=arithmetic_stack_pop(stack, operator, NULL);
+  pa=gal_data_copy_to_new_type_free(pa, GAL_TYPE_FLOAT64);
+
+  /* Third and fourth popped operands are the center. */
+  tmp=arithmetic_stack_pop(stack, operator, NULL);
+  tmp=gal_data_copy_to_new_type_free(tmp, GAL_TYPE_FLOAT64);
+  center=arithmetic_stack_pop(stack, operator, NULL);
+  center=gal_data_copy_to_new_type_free(center, GAL_TYPE_FLOAT64);
+  center->next=tmp;
+
+  /* Fifth and sixth popped operands are the point coordinates. */
+  tmp=arithmetic_stack_pop(stack, operator, NULL);
+  tmp=gal_data_copy_to_new_type_free(tmp, GAL_TYPE_FLOAT64);
+  point=arithmetic_stack_pop(stack, operator, NULL);
+  point=gal_data_copy_to_new_type_free(point, GAL_TYPE_FLOAT64);
+  point->next=tmp;
+
+  /* The ellipse parameters should have the same size: either 1 element, or
+     the same number of elements as points. */
+  if(q->size!=1 || q->size!=point->size)
+    error(EXIT_FAILURE, 0, "the first popped operand of '%s' (the axis "
+          "ratio) should have either a single element, or the same "
+          "number of elements as the last popped element (the point's "
+          "first coordinate value)",
+          arithmetic_operator_name(operator));
+  if(pa->size!=1 || pa->size!=point->size)
+    error(EXIT_FAILURE, 0, "the second popped operand of '%s' (the "
+          "position angle) should have either a single element, or the "
+          "same number of elements as the last popped element (the point's "
+          "first coordinate value)", arithmetic_operator_name(operator));
+  if(center->next->size!=1 || center->next->size!=point->size)
+    error(EXIT_FAILURE, 0, "the  third operand of '%s' (the "
+          "ellipse center's second coordinate) should have either a single "
+          "element, or the same number of elements as the last popped "
+          "element (the point's first coordinate)",
+          arithmetic_operator_name(operator));
+  if(center->size!=1 || center->size!=point->size)
+    error(EXIT_FAILURE, 0, "the  fourth operand of '%s' (the "
+          "ellipse center's first coordinate) should have either a single "
+          "element, or the same number of elements as the last popped "
+          "element (the point's first coordinate)",
+          arithmetic_operator_name(operator));
+  if(center->next->size!=1 || center->next->size!=point->size)
+    error(EXIT_FAILURE, 0, "the  fifth operand of '%s' (the "
+          "point's second coordinate) should have either a single "
+          "element, or the same number of elements as the last popped "
+          "element (the point's first coordinate)",
+          arithmetic_operator_name(operator));
+
+  /* Everything is good, write the outputs. */
+  *q_o=q;
+  *pa_o=pa;
+  *point_o=point;
+  *center_o=center;
+}
+
+
+
+
+
+static void
+arithmetic_distance_ellipse(struct tableparams *p, gal_data_t **stack,
+                            int operator)
+{
+  double *q, *pa, *cx, *cy, *px, *py;
+  gal_data_t *q_d, *pa_d, *center_d, *point_d;
+
+  /* Pop and prepare all the inputs and set the pointers. */
+  arithmetic_distance_ellipse_prep(p, stack, operator, &q_d, &pa_d,
+                                   &center_d, &point_d);
+  q=q_d->array;
+  pa=pa_d->array;
+  px=point_d->array;
+  cx=center_d->array;
+  py=point_d->next->array;
+  cy=center_d->next->array;
+
+  /*  */
+
+
+
+  /* Clean up and return. */
+  gal_data_free(q_d);
+  gal_data_free(pa_d);
+  gal_list_data_free(point_d);
+  gal_list_data_free(center_d);
+  printf("%s: GOOD\n", __func__); exit(0);
+}
+
+
+
+
+
 /* Convert the ISO date format to seconds since Unix time. */
 static void
 arithmetic_datetosec(struct tableparams *p, gal_data_t **stack,
@@ -1144,6 +1254,10 @@ arithmetic_operator_run(struct tableparams *p,
         case ARITHMETIC_TABLE_OP_DISTANCEFLAT:
         case ARITHMETIC_TABLE_OP_DISTANCEONSPHERE:
           arithmetic_distance(p, stack, token->operator);
+          break;
+
+        case ARITHMETIC_TABLE_OP_DISTANCEONELLIPSE:
+          arithmetic_distance_ellipse(p, stack, token->operator);
           break;
 
         case ARITHMETIC_TABLE_OP_SORTEDTOINTERVAL:
