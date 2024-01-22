@@ -75,9 +75,9 @@ noisechisel_convolve(struct noisechiselparams *p)
           if(!p->cp.quiet)
             {
               if(p->widekernel)
-                gal_timing_report(&t1, "Convolved with sharper kernel.", 1);
+                gal_timing_report(&t1,"Convolved with sharper kernel.",1);
               else
-                gal_timing_report(&t1, "Convolved with given kernel.", 1);
+                gal_timing_report(&t1,"Convolved with given kernel.",1);
             }
         }
       else

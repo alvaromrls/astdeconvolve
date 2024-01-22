@@ -71,7 +71,7 @@
 # space characters in them, quote the full value
 numjobs=8
 builddir=build
-outdir=
+outdir=~/tmp/in-progress/nc-tiles
 
 
 
@@ -87,9 +87,9 @@ outdir=
 # the script, you have to add a line under the line below
 #    'if [ -f "$utility" ]; then rm "$utility"; fi'
 # that will delete that particular program.
-utilname=
-arguments=
-options=
+utilname=noisechisel
+arguments=d2.fits
+options="--tilesize=10,10 --outliernumngb=25 --checkqthresh --outliersclip=5,0.01 --outliersigma=2"
 
 
 
@@ -207,6 +207,7 @@ if make -j$numjobs -C "$builddir"; then
     fi
 
     # Run the built utility with the given arguments and options.
+    rm -f test.fits
     "$utility" $arguments $options $extraopts
 
     # Clean up.

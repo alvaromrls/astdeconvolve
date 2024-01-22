@@ -30,6 +30,7 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 #include <stdlib.h>
 
 #include <gnuastro/tile.h>
+#include <gnuastro/qsort.h>
 #include <gnuastro/threads.h>
 #include <gnuastro/pointer.h>
 #include <gnuastro/statistics.h>
@@ -324,7 +325,7 @@ struct tileinternal_outlier_local
 
 /* Run the outlier rejection on many threads. */
 static void *
-gal_tileinternal_no_outlier_local_on_thread(void *in_prm)
+tileinternal_no_outlier_local_on_thread(void *in_prm)
 {
   /* Low-level variables that others depend on. */
   struct gal_threads_params *tprm=(struct gal_threads_params *)in_prm;
@@ -538,6 +539,55 @@ gal_tileinternal_no_outlier_local_on_thread(void *in_prm)
 
 
 
+static void
+tileinternal_no_outlier_sanitycheck(gal_data_t *input,
+                                    gal_data_t *second,
+                                    gal_data_t *third,
+                                    size_t numneighbors,
+                                    char *optionname)
+{
+  /* Sanity checks. */
+  if(numneighbors<=3)
+    error(EXIT_FAILURE, 0, "%s has to be larger than 3, but "
+          "is currently %zu", optionname, numneighbors);
+  if(input->type!=GAL_TYPE_FLOAT32)
+    error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s to fix "
+          "the problem. The input to this function (not NoiseChisel) "
+          "should be in 32-bit floating point, but it is %s", __func__,
+          PACKAGE_BUGREPORT, gal_type_name(input->type, 1));
+  if(second && second->type!=GAL_TYPE_FLOAT32)
+    error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s to fix "
+          "the problem. The 'second' argument to this function (not "
+          "NoiseChisel) should be in 32-bit floating point, but it is "
+          "%s", __func__, PACKAGE_BUGREPORT, gal_type_name(input->type,
+                                                           1));
+  if(third && third->type!=GAL_TYPE_FLOAT32)
+    error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s to fix "
+          "the problem. The 'third' argument to this function (not "
+          "NoiseChisel) should be in 32-bit floating point, but it is "
+          "%s", __func__, PACKAGE_BUGREPORT, gal_type_name(input->type,
+                                                           1));
+  if(second && gal_dimension_is_different(input, second) )
+    error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s to fix "
+          "the problem. The 'second' argument to this function (not "
+          "NoiseChisel) doesn't have the same size as the input",
+          __func__, PACKAGE_BUGREPORT);
+  if(third && gal_dimension_is_different(input, third) )
+    error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s to fix "
+          "the problem. The 'third' argument to this function (not "
+          "NoiseChisel) doesn't have the same size as the input",
+          __func__, PACKAGE_BUGREPORT);
+
+  if(input->next || second->next || third->next)
+    error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at '%s' to "
+          "fix the problem. The 'next' element of the inputs should "
+          "have been NULL", __func__, PACKAGE_BUGREPORT);
+}
+
+
+
+
+
 void
 gal_tileinternal_no_outlier_local(gal_data_t *input, gal_data_t *second,
                                   gal_data_t *third,
@@ -553,39 +603,9 @@ gal_tileinternal_no_outlier_local(gal_data_t *input, gal_data_t *second,
   size_t owindow, ngbvnum=numthreads*numneighbors;
   int permute=(tl && tl->totchannels>1 && tl->workoverch);
 
-
-  /* Sanity checks. */
-  if(numneighbors<=3)
-    error(EXIT_FAILURE, 0, "%s has to be larger than 3, but "
-          "is currently %zu", optionname, numneighbors);
-  if(input->type!=GAL_TYPE_FLOAT32)
-    error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s to fix "
-          "the problem. The input to this function (not NoiseChisel) "
-          "should be in 32-bit floating point, but it is %s", __func__,
-          PACKAGE_BUGREPORT, gal_type_name(input->type, 1));
-  if(second && second->type!=GAL_TYPE_FLOAT32)
-    error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s to fix "
-          "the problem. The 'second' argument to this function (not "
-          "NoiseChisel) should be in 32-bit floating point, but it is "
-          "%s", __func__, PACKAGE_BUGREPORT, gal_type_name(input->type, 1));
-  if(third && third->type!=GAL_TYPE_FLOAT32)
-    error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s to fix "
-          "the problem. The 'third' argument to this function (not "
-          "NoiseChisel) should be in 32-bit floating point, but it is "
-          "%s", __func__, PACKAGE_BUGREPORT, gal_type_name(input->type, 1));
-  if(second && gal_dimension_is_different(input, second) )
-    error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s to fix "
-          "the problem. The 'second' argument to this function (not "
-          "NoiseChisel) doesn't have the same size as the input",
-          __func__, PACKAGE_BUGREPORT);
-  if(third && gal_dimension_is_different(input, third) )
-    error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s to fix "
-          "the problem. The 'third' argument to this function (not "
-          "NoiseChisel) doesn't have the same size as the input",
-          __func__, PACKAGE_BUGREPORT);
-
-
-  /* Initialize the constant parameters. */
+  /* Basic sanity check and initialize. */
+  tileinternal_no_outlier_sanitycheck(input, second, third,
+                                      numneighbors, optionname);
   prm.tl           = tl;
   prm.ngb_vals     = NULL;
   prm.input        = input;
@@ -646,7 +666,7 @@ gal_tileinternal_no_outlier_local(gal_data_t *input, gal_data_t *second,
 
 
   /* Spin off the threads. */
-  gal_threads_spin_off(gal_tileinternal_no_outlier_local_on_thread,
+  gal_threads_spin_off(tileinternal_no_outlier_local_on_thread,
                        &prm, input->size, numthreads, input->minmapsize,
                        input->quietmmap);
 
@@ -732,4 +752,321 @@ gal_tileinternal_no_outlier_local(gal_data_t *input, gal_data_t *second,
   gal_data_free(prm.blanks);
   gal_data_free(prm.measure);
   gal_list_void_free(prm.ngb_vals, 1);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+static gal_data_t *
+tileinternal_no_outlier_prepare(gal_data_t *input, size_t numneighbors,
+                                gal_data_t **flag_o, size_t **indexs_o,
+                                gal_data_t **ngbs_o)
+{
+  size_t *indexs;
+  gal_data_t *out, *tmp, *flag, *ngbs=NULL;
+  size_t i, *s, *sf, ndim=input->ndim, *dsize=input->dsize;
+
+  /* Set the flags image. */
+  flag=gal_data_alloc(NULL, GAL_TYPE_UINT8, ndim, dsize, NULL, 1,
+                         input->minmapsize, input->quietmmap,
+                         NULL, NULL, NULL);
+
+  /* Allocate an array of indexs for all the good tiles and fill it with */
+  gal_qsort_index_single=input->array;
+  indexs=gal_pointer_allocate(GAL_TYPE_SIZE_T, input->size, 0, __func__,
+                              "indexs");
+  i=0; sf=(s=indexs)+input->size; do *s=i++; while(++s<sf);
+  qsort(indexs, input->size, sizeof(size_t),
+        gal_qsort_index_single_float32_i);
+
+  /* For a check
+  {
+    float *in=input->array;
+    for(i=0;i<input->size;++i)
+      printf("%zu: %zu: %f\n", i, indexs[i], in[indexs[i]]);
+  }*/
+
+  /* Allocate the necessary space to keep the neighbor values in each
+     round. */
+  out=gal_data_copy(input);
+  gal_blank_initialize(out);
+  gal_list_data_add_alloc(&ngbs, NULL, input->type, 1, &numneighbors,
+                          NULL, 0, input->minmapsize, input->quietmmap,
+                          NULL, NULL, NULL);
+  if(input->next)
+    {
+      /* Second input. */
+      gal_list_data_add_alloc(&ngbs, NULL, input->type, 1, &numneighbors,
+                              NULL, 0, input->minmapsize, input->quietmmap,
+                              NULL, NULL, NULL);
+      tmp=gal_data_copy(input);
+      gal_blank_initialize(tmp);
+      out->next=tmp;
+
+      /* Third input (if it exists). */
+      if(input->next->next)
+        {
+          gal_list_data_add_alloc(&ngbs, NULL, input->type, 1,
+                                  &numneighbors, NULL, 0,
+                                  input->minmapsize, input->quietmmap,
+                                  NULL, NULL, NULL);
+          tmp=gal_data_copy(input);
+          gal_blank_initialize(tmp);
+          out->next->next=tmp;
+        }
+    }
+
+  /* Set the output pointers and return the output array. */
+  *indexs_o=indexs;
+  *flag_o=flag;
+  *ngbs_o=ngbs;
+  return out;
+}
+
+
+
+
+
+static void
+tileinternal_non_blank_neighbors_add_ind(gal_data_t *input, size_t pind,
+                                         gal_data_t *ngbs,
+                                         size_t ngb_counter,
+                                         size_t chstart)
+{
+  gal_data_t *tin, *tngb;
+
+  /* For all the inputs, copy the value of this index into the respective
+     neighbors array. */
+  tin=input;
+  for(tngb=ngbs; tngb!=NULL; tngb=tngb->next)
+    {
+      memcpy(gal_pointer_increment(tngb->array, ngb_counter,  tin->type),
+             gal_pointer_increment(tin->array,  chstart+pind, tin->type),
+             gal_type_sizeof(tin->type));
+      tin=tin->next;
+    }
+}
+
+
+
+
+
+/* For a given index, built a list of the requested number of non-blank
+   neighbors. */
+static void
+tileinternal_non_blank_neighbors(gal_data_t *input, uint8_t metric,
+                                 size_t fullind, size_t ndim,
+                                 size_t *dsize, size_t *dinc,
+                                 uint8_t *flag, gal_data_t *ngbs,
+                                 char *optionname)
+{
+  uint8_t *u, *uf;
+  size_t ngb_counter=0, pind;
+  gal_list_dosizet_t *lQ, *sQ;
+  float dist, pdist, *inarr=input->array;
+  size_t index, chstart, icoord[3], ncoord[3];
+
+  /*********************************************************/
+  /******* Correct the index for tiles at this phase. ******/
+  chstart=0;
+  index=fullind;
+  /*********************************************************/
+
+  /* Reset all the flags to zero. */
+  uf=(u=flag)+input->size; do *u=0; while(++u<uf);
+
+  /* Get the coordinates of this pixel (necessary for looking around). */
+  gal_dimension_index_to_coord(index, ndim, dsize, icoord);
+
+  /* Start parsing the neighbors. We will use a two-way ordered linked
+     list structure. To start from the nearest and go out to the
+     farthest. */
+  lQ=sQ=NULL;
+  ngb_counter=0;
+  flag[index]=1;
+  gal_list_dosizet_add(&lQ, &sQ, index, 0.0f);
+  while(sQ)
+    {
+      /* Pop-out (p) an index from the queue. */
+      pind=gal_list_dosizet_pop_smallest(&lQ, &sQ, &pdist);
+
+      /* Add the value of this popped index into the neighbors. */
+      if( !isnan(inarr[pind]) )
+        {
+          tileinternal_non_blank_neighbors_add_ind(input, pind, ngbs,
+                                                   ngb_counter, chstart);
+
+          /* If we have filled all the elements, clean up the two-way
+             ordered linked list and break out. */
+          if(++ngb_counter>=ngbs->size)
+            {
+              if(lQ) gal_list_dosizet_free(lQ);
+              break;
+            }
+        }
+
+      /* Go over all the neighbors of this popped pixel and add them to
+         the list of neighbors to be checked. */
+      GAL_DIMENSION_NEIGHBOR_OP(pind, ndim, dsize, 1, dinc,
+          {
+            /* Only look at neighbors that have not been checked. VERY
+               IMPORTANT: we must not check for blank values here,
+               otherwise we won't be able to parse over extended blank
+               regions. */
+            if( flag[nind]==0 )
+              {
+                /* Get the coordinates of this neighbor. */
+                gal_dimension_index_to_coord(nind, ndim, dsize, ncoord);
+
+                /* Distance of this neighbor to the one to be filled. */
+                switch(metric)
+                  {
+                  case GAL_INTERPOLATE_NEIGHBORS_METRIC_RADIAL:
+                    dist=gal_dimension_dist_radial(icoord, ncoord, ndim);
+                    break;
+                  case GAL_INTERPOLATE_NEIGHBORS_METRIC_MANHATTAN:
+                    dist=gal_dimension_dist_manhattan(icoord, ncoord,
+                                                      ndim);
+                    break;
+                  default:
+                    error(EXIT_FAILURE, 0, "%s: %d is not a valid metric "
+                          "identifier", __func__, metric);
+                  }
+
+                /* Add this neighbor to the list. */
+                gal_list_dosizet_add(&lQ, &sQ, nind, dist);
+
+                /* Flag this neighbor as checked for this 'pind'. */
+                flag[nind]=1;
+              }
+          } );
+
+      /* If there are no more neighbors to add to the queue, then this
+         shows, there were not enough points for outlier rejection. */
+      if(sQ==NULL)
+        error(EXIT_FAILURE, 0, "%s: only %zu neighbors found while "
+              "you had asked to use %zu neighbors for outlier "
+              "rejection (value to '%s')", __func__, ngb_counter,
+              ngbs->size, optionname);
+    }
+}
+
+
+
+
+
+/*  */
+void
+gal_tileinternal_no_outlier_ordered(gal_data_t *input, gal_data_t *second,
+                                    gal_data_t *third,
+                                    struct gal_tile_two_layer_params *tl,
+                                    uint8_t metric, size_t numneighbors,
+                                    size_t numthreads, double *outliermclip,
+                                    double outliersigma, char *filename,
+                                    char *optionname)
+{
+  float med, stdmultip;
+  size_t *s, *si, *dinc, *indexs;
+  gal_data_t *out, *flag, *ngbs, *clip;
+  size_t ndim=input->ndim, *dsize=input->dsize;
+  float *fo1, *fo2, *fo3, *cliparr, *fi1=input->array;
+  uint8_t extrastats=GAL_STATISTICS_CLIP_OUTCOL_OPTIONAL_STD;
+  float *fi2=second?second->array:NULL, *fi3=third?third->array:NULL;
+
+  printf("mclipparams: %f, %f\n", outliermclip[0], outliermclip[1]);
+
+  /* Basic sanity checks. */
+  tileinternal_no_outlier_sanitycheck(input, second, third,
+                                      numneighbors, optionname);
+
+  /* Allocate all necessary arrays. */
+  input->next=second; input->next->next=third;
+  out=tileinternal_no_outlier_prepare(input, numneighbors, &flag,
+                                      &indexs, &ngbs);
+
+  /* To start, put the requested number of neighbors in the output. */
+  s=si=indexs;
+  fo1=out->array;
+  fo2=fi2?out->next->array:NULL;
+  fo3=fi3?out->next->next->array:NULL;
+  do { fo1[*s]=fi1[*s]; fo2[*s]=fi2[*s]; fo3[*s]=fi3[*s]; }
+  while( (++s)-si < numneighbors );
+
+  /****************************************************/
+  gal_fits_img_write(input, "test.fits", NULL, 0);
+  gal_fits_img_write(out, "test.fits", NULL, 0);
+  /****************************************************/
+
+  /* Go over all the non-blank pixels and add them if they are within the
+     desired range of the previous pixels. */
+  dinc=gal_dimension_increment(ndim, dsize);
+  while( !isnan( fi1[*(++s)] ) )
+    {
+      /* Fill up the neighbors of this new pixel for all the inputs. */
+      tileinternal_non_blank_neighbors(out, metric, *s, ndim, dsize,
+                                       dinc, flag->array, ngbs,
+                                       optionname);
+
+      /* For a check of one pixel.
+      if(s-si==53)
+        {
+          size_t i;
+          float *ns=ngbs->array;
+          fo1[*s]=fi1[*s]; // Just to visually see the pixel.
+          for(i=0;i<numneighbors;++i) printf("%f\n", ns[i]);
+          gal_fits_img_write(out, "test.fits", NULL, 0);
+          fo1[*s]=NAN;     // Set it back to NAN.
+        }
+      */
+
+      /* Use MAD clipping to find the center and scatter. */
+      clip=gal_statistics_clip_mad(ngbs, outliermclip[0], outliermclip[1],
+                                   extrastats, 1, 1);
+      cliparr=clip->array;
+
+
+      /* If this pixel's value is within the statistical range of the
+         neighbors, put it in the output. Otherwise, just ignore it and go
+         to the next pixel. */
+      float num=cliparr[GAL_STATISTICS_CLIP_OUTCOL_NUMBER_USED];
+      med=cliparr[GAL_STATISTICS_CLIP_OUTCOL_MEDIAN];
+      stdmultip=cliparr[GAL_STATISTICS_CLIP_OUTCOL_MAD]*outliersigma;
+      //printf("%s: med: %f, diff: %f, num: %.0f\n", __func__, med,
+      //      stdmultip, num);
+      if( fi1[*s] < med+stdmultip )
+        {
+          fo1[*s]=fi1[*s];
+          gal_fits_img_write(out, "test.fits", NULL, 0);
+          printf("%s: %zu, %f added\n", __func__, s-si, fi1[*s]);
+        }
+    }
+
+  /* Clean up and return. */
+  free(indexs);
+  gal_data_free(flag);
+  gal_list_data_free(ngbs);
+  free(input->array);  input->array=out->array;
+  if(second) {free(second->array); second->array=out->next->array;}
+  if(third) {free(third->array); third->array=out->next->next->array;}
+  out->array=out->next->array=out->next->next->array=NULL;
+
+  /***************************************************/
+  printf("%s: GOOD, %zu\n", __func__, numneighbors); exit(0);
+  /***************************************************/
 }

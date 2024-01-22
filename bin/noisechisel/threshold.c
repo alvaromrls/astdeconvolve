@@ -586,10 +586,13 @@ threshold_quantile_find_apply(struct noisechiselparams *p)
   size_t nval;
   gal_data_t *num;
   struct timeval t1;
+  char *unit=p->input->unit;
   struct qthreshparams qprm;
+  uint8_t type=p->input->type;
+  int quietmmap=p->cp.quietmmap;
   struct gal_options_common_params *cp=&p->cp;
   struct gal_tile_two_layer_params *tl=&cp->tl;
-
+  size_t ndim=p->input->ndim, minmapsize=p->input->minmapsize;
 
   /* Get the starting time if necessary. */
   if(!p->cp.quiet) gettimeofday(&t1, NULL);
@@ -610,19 +613,14 @@ threshold_quantile_find_apply(struct noisechiselparams *p)
 
 
   /* Allocate space for the quantile threshold values. */
-  qprm.erode_th=gal_data_alloc(NULL, p->input->type, p->input->ndim,
-                               tl->numtiles, NULL, 0, cp->minmapsize,
-                               p->cp.quietmmap, NULL, p->input->unit,
-                               NULL);
-  qprm.noerode_th=gal_data_alloc(NULL, p->input->type, p->input->ndim,
-                                 tl->numtiles, NULL, 0, cp->minmapsize,
-                                 p->cp.quietmmap, NULL, p->input->unit,
-                                 NULL);
+  qprm.erode_th=gal_data_alloc(NULL, type, ndim, tl->numtiles, NULL, 0,
+                               minmapsize, quietmmap, NULL, unit, NULL);
+  qprm.noerode_th=gal_data_alloc(NULL, type, ndim, tl->numtiles, NULL, 0,
+                                 minmapsize, quietmmap, NULL, unit, NULL);
   qprm.expand_th = ( p->detgrowquant!=1.0f
-                     ? gal_data_alloc(NULL, p->input->type, p->input->ndim,
-                                      tl->numtiles, NULL, 0, cp->minmapsize,
-                                      p->cp.quietmmap, NULL, p->input->unit,
-                                      NULL)
+                     ? gal_data_alloc(NULL, type, ndim, tl->numtiles,
+                                      NULL, 0, minmapsize, quietmmap,
+                                      NULL, unit, NULL)
                      : NULL );
 
 
@@ -673,12 +671,12 @@ threshold_quantile_find_apply(struct noisechiselparams *p)
 
   /* Remove the outliers. */
   if(p->outliernumngb)
-    gal_tileinternal_no_outlier_local(qprm.erode_th, qprm.noerode_th,
-                                      qprm.expand_th, &cp->tl,
-                                      cp->interpmetric, p->outliernumngb,
-                                      cp->numthreads, p->outliersclip,
-                                      p->outliersigma, p->qthreshname,
-                                      "--outliernumngb");
+    gal_tileinternal_no_outlier_ordered(qprm.erode_th, qprm.noerode_th,
+                                        qprm.expand_th, &cp->tl,
+                                        cp->interpmetric, p->outliernumngb,
+                                        cp->numthreads, p->outliersclip,
+                                        p->outliersigma, p->qthreshname,
+                                        "--outliernumngb");
 
 
   /* Use the no-outlier grid as a basis for later estimating the sky. To
