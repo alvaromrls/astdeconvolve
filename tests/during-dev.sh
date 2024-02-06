@@ -71,7 +71,7 @@
 # space characters in them, quote the full value
 numjobs=8
 builddir=build
-outdir=
+outdir=~/tmp/in-progress/stack-with-num/build
 
 
 
@@ -87,8 +87,8 @@ outdir=
 # the script, you have to add a line under the line below
 #    'if [ -f "$utility" ]; then rm "$utility"; fi'
 # that will delete that particular program.
-utilname=
-arguments=
+utilname=arithmetic
+arguments="in-9.fits 4.5 0.01 2 collapse-madclip-mean counter --writeall"
 options=
 
 
@@ -207,6 +207,7 @@ if make -j$numjobs -C "$builddir"; then
     fi
 
     # Run the built utility with the given arguments and options.
+    rm -f test-*.fits
     "$utility" $arguments $options $extraopts
 
     # Clean up.
