@@ -88,7 +88,7 @@ outdir=~/tmp/in-progress/stack-with-num/build
 #    'if [ -f "$utility" ]; then rm "$utility"; fi'
 # that will delete that particular program.
 utilname=arithmetic
-arguments="in-9.fits 4.5 0.01 2 collapse-madclip-mean counter --writeall"
+arguments="in-9.fits 3 0.01 2 collapse-madclip-fill-mean counter --writeall -N1"
 options=
 
 

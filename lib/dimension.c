@@ -903,12 +903,12 @@ struct dimension_sortbased_p
 
 
 static void
-dimension_csb_copy(gal_data_t *in, size_t from, gal_data_t *work,
-                   size_t to)
+dimension_csb_copy(gal_data_t *from, size_t findex,
+                   gal_data_t *to,   size_t tindex, size_t num)
 {
-  memcpy(gal_pointer_increment(work->array, to,   in->type),
-         gal_pointer_increment(in->array,   from, in->type),
-         gal_type_sizeof(in->type));
+  memcpy(gal_pointer_increment(to->array,   tindex, to->type),
+         gal_pointer_increment(from->array, findex, to->type),
+         num*gal_type_sizeof(to->type));
 }
 
 
@@ -1144,21 +1144,131 @@ dimension_collapse_sortbased_conv(gal_data_t *work /*, int check*/)
 
 
 
+static void
+dimension_collapse_sortbased_copy(struct dimension_sortbased_p *p,
+                                  size_t index, gal_data_t *work,
+                                  int frominput)
+{
+  size_t a, b, c, i;
+  gal_data_t *in=p->in;
+  size_t c_dim=p->c_dim, wdsize=in->dsize[c_dim];
+
+  /* Set the to/from arrays. */
+  gal_data_t *from=frominput?in:work, *to=frominput?work:in;
+
+  /* Reset the sizes (which may have been changed during the
+     statistical calculation), and flags (so the possible existance or
+     non-existance of blank values in one run doesn't affect the
+     next). */
+  work->flag=0;
+  work->size=work->dsize[0]=wdsize;
+
+  /* Extract the necessary components into an array. */
+  switch(in->ndim)
+    {
+    /* One-dimensional data. */
+    case 1:
+      memcpy(to->array, from->array,
+             in->size*gal_type_sizeof(in->type));
+      break;
+
+    /* Two dimensional data. */
+    case 2:
+      a=in->dsize[0];
+      b=in->dsize[1];
+      if(c_dim) /* c_dim==1 dim. to collapse, already contiguous. */
+        {
+          if(frominput) dimension_csb_copy(in, index*b, work, 0, b);
+          else          dimension_csb_copy(work, 0, in, index*b, b);
+        }
+      else      /* c_dim==0 */
+        {
+          if(frominput)
+            for(i=0;i<a;++i) dimension_csb_copy(in, i*b+index, work, i, 1);
+          else
+            for(i=0;i<a;++i) dimension_csb_copy(work, i, in, i*b+index, 1);
+        }
+      break;
+
+    /* Three dimensional data. */
+    case 3:
+      a=in->dsize[0];
+      b=in->dsize[1];
+      c=in->dsize[2];
+      switch(c_dim)
+        {
+        case 0:
+          for(i=0;i<a;++i)
+            {
+              if(frominput) dimension_csb_copy(in,i*b*c+index,work,i,1);
+              else          dimension_csb_copy(work,i,in,i*b*c+index,1);
+            }
+          break;
+
+        case 1:
+          for(i=0;i<b;++i)
+            {
+              if(frominput)
+                dimension_csb_copy(in, (index/c)*b*c+i*c+(index%c),
+                                   work, i, 1);
+              else
+                dimension_csb_copy(work, i, in,
+                                   (index/c)*b*c+i*c+(index%c), 1);
+            }
+          break;
+
+        case 2: /* Fastest dimension: contiguous in memory. */
+          if(frominput)
+            dimension_csb_copy(in, (index/b)*b*c+(index%b)*c, work, 0, c);
+          else
+            dimension_csb_copy(work, 0, in, (index/b)*b*c+(index%b)*c, c);
+          break;
+
+        default:
+          error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at "
+                "'%s' to solve the problem. The dimension counter "
+                "%zu isn't recognized for a 3D dataset", __func__,
+                PACKAGE_BUGREPORT, c_dim);
+        }
+      break;
+
+    default:
+      error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at '%s' "
+            "to find the cause. This function doesn't support %zu "
+            "dimensions", __func__, PACKAGE_BUGREPORT, in->ndim);
+    }
+
+  /* For a check
+     if(index==250)
+     {
+       double *f=work->array;
+       for(i=0;i<wdsize;++i)
+         printf("%zu  %f\n", i, f[i]);
+       printf("%s: GOOD\n", __func__); //exit(0);
+     }
+  */
+}
+
+
+
+
+
 static void *
 dimension_collapse_sortbased_worker(void *in_prm)
 {
   /* Low-level definitions to be done first. */
   struct gal_threads_params *tprm=(struct gal_threads_params *)in_prm;
-  struct dimension_sortbased_p *p=(struct dimension_sortbased_p *)tprm->params;
+  struct dimension_sortbased_p *p
+    =(struct dimension_sortbased_p *)tprm->params;
 
   /* Input dataset (also used in other variable definitions). */
   gal_data_t *in=p->in;
 
   /* Subsequent definitions. */
+  size_t sind=GAL_BLANK_SIZE_T;
   uint8_t clipflags=0, isfill=0;
-  size_t a, b, c, sind=GAL_BLANK_SIZE_T;
   gal_data_t *work, *conv=NULL, *stat=NULL;
-  size_t i, j, index, c_dim=p->c_dim, wdsize=in->dsize[c_dim];
+  size_t i, index, c_dim=p->c_dim, wdsize=in->dsize[c_dim];
 
   /* Allocate the dataset that will be sorted. */
   work=gal_data_alloc(NULL, in->type, 1, &wdsize, NULL, 0,
@@ -1185,86 +1295,10 @@ dimension_collapse_sortbased_worker(void *in_prm)
      this thread. */
   for(i=0; tprm->indexs[i] != GAL_BLANK_SIZE_T; ++i)
     {
-      /* For easy reading. */
+      /* Set the index to work on and extract the desired dimension into
+         the 'work' dataset. */
       index = tprm->indexs[i];
-
-      /* Reset the sizes (which may have been changed during the
-         statistical calculation), and flags (so the possible existance or
-         non-existance of blank values in one run doesn't affect the
-         next). */
-      work->flag=0;
-      work->size=work->dsize[0]=wdsize;
-
-      /* Extract the necessary components into an array. */
-      switch(in->ndim)
-        {
-        /* One-dimensional data. */
-        case 1:
-          memcpy(work->array, in->array,
-                 in->size*gal_type_sizeof(in->type));
-          break;
-
-        /* Two dimensional data. */
-        case 2:
-          a=in->dsize[0];
-          b=in->dsize[1];
-          if(c_dim) /* c_dim==1 dim. to collapse, already contiguous. */
-            memcpy(work->array,
-                   gal_pointer_increment(in->array,   index*b, in->type),
-                   b*gal_type_sizeof(in->type));
-          else      /* c_dim==0 */
-            for(j=0;j<a;++j) dimension_csb_copy(in, j*b+index, work, j);
-          break;
-
-        /* Three dimensional data. */
-        case 3:
-          a=in->dsize[0];
-          b=in->dsize[1];
-          c=in->dsize[2];
-          switch(c_dim)
-            {
-            case 0:
-              for(j=0;j<a;++j)
-                dimension_csb_copy(in, j*b*c+index, work, j);
-              break;
-
-            case 1:
-              for(j=0;j<b;++j)
-                dimension_csb_copy(in, (index/c)*b*c+j*c+(index%c),
-                                   work, j);
-              break;
-
-            case 2: /* Fastest dimension: contiguous in memory. */
-              memcpy(work->array,
-                     gal_pointer_increment(in->array,
-                                           (index/b)*b*c+(index%b)*c,
-                                           in->type),
-                     c*gal_type_sizeof(in->type));
-              break;
-
-            default:
-              error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at "
-                    "'%s' to solve the problem. The dimension counter "
-                    "%zu isn't recognized for a 3D dataset", __func__,
-                    PACKAGE_BUGREPORT, c_dim);
-            }
-          break;
-
-        default:
-          error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at '%s' "
-                "to find the cause. This function doesn't support %zu "
-                "dimensions", __func__, PACKAGE_BUGREPORT, in->ndim);
-        }
-
-      /* For a check
-      if(index==250)
-      {
-        double *f=work->array;
-        for(j=0;j<wdsize;++j)
-          printf("%zu  %f\n", j, f[j]);
-        printf("%s: GOOD\n", __func__); //exit(0);
-      }
-      */
+      dimension_collapse_sortbased_copy(p, index, work, 1);
 
       /* Set the necessary flag for extra calculation during sigma-clipping
          (this is not necessary for some). */
@@ -1294,8 +1328,11 @@ dimension_collapse_sortbased_worker(void *in_prm)
       /* If this is a "filling" operation, then repeat the operation with
          the fill. */
       if(isfill)
-        stat=dimension_collapse_sortbased_fill(p, stat, work, conv,
-                                               clipflags, index==-1);
+        {
+          stat=dimension_collapse_sortbased_fill(p, stat, work, conv,
+                                                 clipflags, index==100);
+          dimension_collapse_sortbased_copy(p, index, work, 0);
+        }
 
       /* Set the index in the output 'stat' array. These can't be set in
          the main operation 'switch' because the functions are different,
@@ -1367,7 +1404,9 @@ dimension_collapse_sortbased(gal_data_t *in, size_t c_dim, int operator,
                              int quietmmap)
 {
   size_t cnum=0;
-  gal_data_t *out;
+  gal_data_
+
+    t *out;
   double *warr=NULL;
   int otype=GAL_TYPE_INVALID;
   size_t outdsize[10], outndim;
@@ -1434,6 +1473,8 @@ dimension_collapse_sortbased(gal_data_t *in, size_t c_dim, int operator,
   gal_threads_spin_off(dimension_collapse_sortbased_worker, &p,
                        out->size, numthreads,
                        minmapsize, quietmmap);
+
+  gal_fits_img_write(p.in, "masked.fits", NULL, 0);
 
   /* Remove the respective dimension in the WCS structure also (if any
      exists). Note that 'out->ndim' has already been changed. So we'll use
