@@ -71,7 +71,7 @@
 # space characters in them, quote the full value
 numjobs=8
 builddir=build
-outdir=
+outdir=~/tmp/in-progress/noisechisel-tile-init
 
 
 
@@ -87,9 +87,9 @@ outdir=
 # the script, you have to add a line under the line below
 #    'if [ -f "$utility" ]; then rm "$utility"; fi'
 # that will delete that particular program.
-utilname=
-arguments=
-options=
+utilname=noisechisel
+arguments=/mnt/scratch/build/arrakihs-pipeline/analysis/stacks/d4.fits
+options="--checkqthresh --checktiles --continueaftercheck --tilesize=20,20"
 
 
 
@@ -207,6 +207,7 @@ if make -j$numjobs -C "$builddir"; then
     fi
 
     # Run the built utility with the given arguments and options.
+    rm -f table-*.fits
     "$utility" $arguments $options $extraopts
 
     # Clean up.

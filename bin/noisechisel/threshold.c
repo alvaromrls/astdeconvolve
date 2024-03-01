@@ -375,6 +375,152 @@ threshold_interp_smooth(struct noisechiselparams *p, gal_data_t **first,
 /****************************************************************
  ************           Quantile threshold           ************
  ****************************************************************/
+/* Prepare the 'usage' array from the tile */
+static size_t
+qthresh_on_tile_usage_prepare(struct noisechiselparams *p,
+                              gal_data_t *usage, gal_data_t *tile,
+                              gal_data_t *meanconv)
+{
+  void *tarray=NULL;
+  gal_data_t *tblock=NULL;
+  size_t i, ndim=p->input->ndim;
+
+  /* Re-initialize the usage array's space (will be changed in
+     'gal_data_copy_to_allocated' for each tile). */
+  usage->ndim=ndim;
+  usage->size=p->maxtcontig;
+  memcpy(usage->dsize, p->maxtsize, ndim*sizeof *p->maxtsize);
+
+  /* Temporarily change the tile's pointers so we can do the work on
+     the convolved image, then copy the desired contents into the
+     already allocated 'usage' array and set the pointers back to what
+     they were. */
+  tarray=tile->array;
+  tblock=tile->block;
+  tile->array=gal_tile_block_relative_to_other(tile, meanconv);
+  tile->block=meanconv;
+  gal_data_copy_to_allocated(tile, usage);
+  tile->array=tarray;
+  tile->block=tblock;
+
+  /* Adjust the 'usage' array pointers that should not be inherited
+     from the tile. We are setting it to 1D because after the clipping,
+     the dimensionality is going to be lost anyway. */
+  usage->size=1;
+  usage->next=NULL;
+  for(i=0;i<usage->ndim;++i) usage->size*=usage->dsize[i];
+  usage->dsize[0]=usage->size; /* Must be after the loop above. */
+  usage->ndim=1;               /* Must be after the loop above. */
+
+  /* Return the size of the final 'usage' array (based on this particular
+     tile). */
+  return usage->size;
+}
+
+
+
+
+
+/* Calculate the MAD-clipped mean quantile. */
+static double
+qthresh_on_tile_mean_quant(gal_data_t *usage)
+{
+  size_t one=1;
+  double meanquant;
+  gal_data_t *clip, *mean, *meanq;
+  uint8_t extrastats=GAL_STATISTICS_CLIP_OUTCOL_OPTIONAL_MEAN;
+
+  /* Do the MAD-clipping in-place. */
+  clip=gal_statistics_clip_mad(usage, 4.5, 0.01, extrastats, 1, 1);
+  mean=gal_data_alloc(NULL, clip->type, 1, &one, NULL, 0, -1, 1,
+                      NULL, NULL, NULL);
+  memcpy(mean->array,
+         gal_pointer_increment(clip->array,
+                               GAL_STATISTICS_CLIP_OUTCOL_MEAN,
+                               clip->type),
+         gal_type_sizeof(clip->type));
+  meanq = ( usage->size
+            ? gal_statistics_quantile_function(usage, mean, 1)
+            : NULL );
+  meanquant=meanq ? *(double *)(meanq->array) : NAN;
+
+  /* Clean up and return. */
+  gal_data_free(meanq);
+  gal_data_free(clip);
+  gal_data_free(mean);
+  return meanquant;
+}
+
+
+
+
+
+/* Bring 'usage' in the range from 0 to 1; then find the difference between
+   the values at quantile 0.25 to 0.75. In a Uniform distribution, this is
+   0.5 (0.75-0.25), but in a Gaussian distribution this is about 0.16
+   (because most values are concentrated in the center of the
+   distribution). */
+static int
+qthresh_on_tile_concentrated(gal_data_t *usage, double q_value_diff,
+                             size_t tind)
+{
+  int out=0;
+  size_t j, one=1;
+  double qf1, qf2;
+  float *uarr=usage->array;
+  gal_data_t *qf1_d, *qf2_d, *qfinput;
+  float umin=uarr[0], umax=uarr[usage->size-1];
+
+  /* Small sanity check. */
+  if(usage->type!=GAL_TYPE_FLOAT32)
+    error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at '%s' to fix "
+          "the problem. The type of the 'usage' array should be float32, "
+          "but it is '%s'", __func__, PACKAGE_BUGREPORT,
+          gal_type_name(usage->type, 1));
+
+  /* Allocate the dataset to hold the quantile value. */
+  qfinput=gal_data_alloc(NULL, usage->type, 1, &one, NULL, 0, -1, 1,
+                         NULL, NULL, NULL);
+
+  /* Bring all values between 0 to 1 and estimate the quantiles. */
+  for(j=0;j<usage->size;++j) uarr[j]=(uarr[j]-umin)/(umax-umin);
+  ((float *)(qfinput->array))[0]=0.25;
+  qf1_d=gal_statistics_quantile_function(usage, qfinput, 1);
+  ((float *)(qfinput->array))[0]=0.75;
+  qf2_d=gal_statistics_quantile_function(usage, qfinput, 1);
+  qf1=((double *)(qf1_d->array))[0];
+  qf2=((double *)(qf2_d->array))[0];
+
+  /* Final returned value (placed here so we can check it if necessary):
+     also because we need to correct the values. */
+  out = qf2-qf1>q_value_diff;
+  if(out)
+    for(j=0;j<usage->size;++j) uarr[j]=uarr[j]*(umax-umin)+umin;
+
+  /* For a check (to disable the print, set 'tind' to -1). */
+  if(tind!=-1)
+    {
+      printf("%s:%zu: umin: %f, umax: %f\n", __func__, tind, umin, umax);
+      printf("%s:%zu: qf1: %f,  qf2: %f, qdiff=%f\n",  __func__, tind,
+             qf1, qf2, qf2-qf1);
+      printf("%s:%zu: Thresh: %f. Result: %s\n", __func__, tind,
+             q_value_diff, out?"PASSED":"FAILED");
+      gal_table_write(usage, NULL, NULL, GAL_TABLE_FORMAT_BFITS,
+                      "table-usage.fits", NULL, 0, 0);
+      exit(0);
+    }
+
+  /* Clean up and return. */
+  gal_data_free(qfinput);
+  gal_data_free(qf1_d);
+  gal_data_free(qf2_d);
+  return out;
+}
+
+
+
+
+
 struct qthreshparams
 {
   gal_data_t        *erode_th;
@@ -388,6 +534,43 @@ struct qthreshparams
 
 
 
+static void
+qthresh_on_tile_write(struct qthreshparams *qprm, gal_data_t *usage,
+                      size_t tind)
+{
+  gal_data_t *qvalue;
+  int type=qprm->erode_th->type;
+  size_t twidth=gal_type_sizeof(type);
+  struct noisechiselparams *p=qprm->p;
+
+  /* Get the erosion quantile for this tile and save it. Note that
+     the type of 'qvalue' is the same as the input dataset. */
+  qvalue=gal_statistics_quantile(usage, p->qthresh, 1);
+  memcpy(gal_pointer_increment(qprm->erode_th->array, tind, type),
+         qvalue->array, twidth);
+  gal_data_free(qvalue);
+
+  /* Same for the no-erode quantile. */
+  qvalue=gal_statistics_quantile(usage, p->noerodequant, 1);
+  memcpy(gal_pointer_increment(qprm->noerode_th->array, tind, type),
+         qvalue->array, twidth);
+  gal_data_free(qvalue);
+
+  /* Same for the expansion quantile. */
+  if(qprm->expand_th)
+    {
+      qvalue=gal_statistics_quantile(usage, p->detgrowquant, 1);
+      memcpy(gal_pointer_increment(qprm->expand_th->array, tind,
+                                   type),
+             qvalue->array, twidth);
+      gal_data_free(qvalue);
+    }
+}
+
+
+
+
+
 static void *
 qthresh_on_tile(void *in_prm)
 {
@@ -395,11 +578,13 @@ qthresh_on_tile(void *in_prm)
   struct qthreshparams *qprm=(struct qthreshparams *)tprm->params;
   struct noisechiselparams *p=qprm->p;
 
+  size_t initsize;
+  double meanquant;
   void *tarray=NULL;
   int type=qprm->erode_th->type;
+  size_t i, tind, ndim=p->input->ndim;
+  gal_data_t *tile, *usage, *tblock=NULL;
   gal_data_t *meanconv = p->wconv ? p->wconv : p->conv;
-  size_t i, tind, twidth=gal_type_sizeof(type), ndim=p->input->ndim;
-  gal_data_t *tile, *mean, *num, *meanquant, *qvalue, *usage, *tblock=NULL;
 
   /* Put the temporary usage space for this thread into a data set for easy
      processing. */
@@ -408,47 +593,69 @@ qthresh_on_tile(void *in_prm)
                        type, ndim, p->maxtsize, NULL, 0, p->cp.minmapsize,
                        p->cp.quietmmap, NULL, NULL, NULL);
 
+
   /* Go over all the tiles given to this thread. */
   for(i=0; tprm->indexs[i] != GAL_BLANK_SIZE_T; ++i)
     {
-      /* Re-initialize the usage array's space (will be changed in
-         'gal_data_copy_to_allocated' for each tile). */
-      usage->ndim=ndim;
-      usage->size=p->maxtcontig;
-      memcpy(usage->dsize, p->maxtsize, ndim*sizeof *p->maxtsize);
-
-
-      /* For easy reading. */
+      /* Copy this tile's data into the already allocated 'usage' array
+         which we can comfortably (without editing the original data)
+         change, reorder and etc. */
       tind = tprm->indexs[i];
-      tile = &p->cp.tl.tiles[tind];
+      tile=&p->cp.tl.tiles[tind];
+      initsize=qthresh_on_tile_usage_prepare(p, usage, tile, meanconv);
 
+      /* For a check...
+      char *plab=NULL;
+      switch(tind)
+        {
+        case -1: plab="BAD"; break;
+      //case 11031: case 14951: case 27470: case 27673: plab="GOOD"; break;
+        }
+      if(plab)
+        {
+          char tname[100];
+          sprintf(tname, "table-%zu-before.fits", tind);
+          gal_table_write(usage, NULL, NULL, GAL_TABLE_FORMAT_BFITS, tname,
+                          NULL, 0, 0);
+        }
+      */
 
-      /* Temporarily change the tile's pointers so we can do the work on
-         the convolved image, then copy the desired contents into the
-         already allocated 'usage' array. */
-      tarray=tile->array; tblock=tile->block;
-      tile->array=gal_tile_block_relative_to_other(tile, meanconv);
-      tile->block=meanconv;
-      gal_data_copy_to_allocated(tile, usage);
-      tile->array=tarray;
-      tile->block=tblock;
+      /* Find the mean's quantile after clipping inplace. */
+      meanquant=qthresh_on_tile_mean_quant(usage);
 
+      /* For a check: to have each tile that you want to study in a
+         separate FITS file, you can use the commands below:
 
-      /* Find the mean's quantile on this tile, note that we have already
-         copied the tile's dataset to a newly allocated place. So we have
-         set the 'inplace' flag to '1' to avoid extra allocation. */
-      mean=gal_statistics_mean(usage);
-      num=gal_statistics_number(usage);
-      mean=gal_data_copy_to_new_type_free(mean, usage->type);
-      meanquant = ( *(size_t *)(num->array)
-                    ? gal_statistics_quantile_function(usage, mean, 1)
-                    : NULL );
+         $ astnoisechisel img.fits --checkqthresh --checktiles \
+                          --continueaftercheck
+         $ ids="20904 21324 21527 11031 14951 27470 27673"
+         $ for i in $ids; do
+             astarithmetic img_tiles.fits   -h2 set-l \
+                           img_qthresh.fits -h1 set-i \
+                           i l $i ne nan where trim -o crop-$i.fits;
+           done
+
+      if(plab)
+        {
+          char tname[100];
+          printf("%s:%s:%zu: %f (before: %zu, after: %zu). result: %d\n",
+                 __func__, plab, tind, meanq, beforeclip, usage->size,
+                 (meanq<0.5f && meanq>0.5-p->meanmedqdiff) );
+          sprintf(tname, "table-%zu-after.fits", tind);
+          gal_table_write(usage, NULL, NULL, GAL_TABLE_FORMAT_BFITS, tname,
+                          NULL, 0, 0);
+        }
+      */
 
       /* Only continue if the mean's quantile is close enough to the
          median.  */
       if( meanquant
-          && fabs( *(double *)(meanquant->array)-0.5f) < p->meanmedqdiff )
+          && meanquant<0.5f
+          && meanquant>0.5f-p->meanmedqdiff
+          && (float)usage->size/(float)initsize > 0.75
+          && qthresh_on_tile_concentrated(usage, 0.8, -1) )
         {
+
           /* The mean was found on the wider convolved image, but the
              qthresh values have to be found on the sharper convolved
              images. This is because the distribution becomes more skewed
@@ -458,6 +665,13 @@ qthresh_on_tile(void *in_prm)
              information. */
           if(meanconv!=p->conv)
             {
+              /* Corrections with MAD clipping have not been implemented
+                 yet. */
+              error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at "
+                    "'%s' to fix the problem. The newly added "
+                    "corrections to the quantile threshold have not yet "
+                    "been implemented with the '--widekernel' option",
+                    __func__, PACKAGE_BUGREPORT);
               tarray=tile->array; tblock=tile->block;
               tile->array=gal_tile_block_relative_to_other(tile, p->conv);
               tile->block=p->conv;
@@ -467,28 +681,9 @@ qthresh_on_tile(void *in_prm)
               tile->array=tarray; tile->block=tblock;
             }
 
-          /* Get the erosion quantile for this tile and save it. Note that
-             the type of 'qvalue' is the same as the input dataset. */
-          qvalue=gal_statistics_quantile(usage, p->qthresh, 1);
-          memcpy(gal_pointer_increment(qprm->erode_th->array, tind, type),
-                 qvalue->array, twidth);
-          gal_data_free(qvalue);
-
-          /* Same for the no-erode quantile. */
-          qvalue=gal_statistics_quantile(usage, p->noerodequant, 1);
-          memcpy(gal_pointer_increment(qprm->noerode_th->array, tind, type),
-                 qvalue->array, twidth);
-          gal_data_free(qvalue);
-
-          /* Same for the expansion quantile. */
-          if(qprm->expand_th)
-            {
-              qvalue=gal_statistics_quantile(usage, p->detgrowquant, 1);
-              memcpy(gal_pointer_increment(qprm->expand_th->array, tind,
-                                            type),
-                     qvalue->array, twidth);
-              gal_data_free(qvalue);
-            }
+          /* Calculate the desired quantile and write them in the
+             output. */
+          qthresh_on_tile_write(qprm, usage, tind);
         }
       else
         {
@@ -500,11 +695,6 @@ qthresh_on_tile(void *in_prm)
             gal_blank_write(gal_pointer_increment(qprm->expand_th->array,
                                                    tind, type), type);
         }
-
-      /* Clean up and fix the tile's pointers. */
-      gal_data_free(num);
-      gal_data_free(mean);
-      gal_data_free(meanquant);
     }
 
   /* Clean up and wait for the other threads to finish, then return. */
@@ -519,7 +709,8 @@ qthresh_on_tile(void *in_prm)
 
 
 static void
-threshold_good_error(size_t number, int before0_after1, size_t interpnumngb)
+threshold_good_error(size_t number, int before0_after1,
+                     size_t interpnumngb)
 {
   before0_after1=1;
 
@@ -631,6 +822,9 @@ threshold_quantile_find_apply(struct noisechiselparams *p)
                                   cp->numthreads * p->maxtcontig, 0,
                                   __func__, "qprm.usage");
 
+  /**********************************
+  cp->numthreads=1;
+  **********************************/
 
   /* Find the threshold on each tile, free the temporary processing space
      and set the blank flag on both. Since they have the same blank
