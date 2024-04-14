@@ -41,7 +41,7 @@
 # Original author:
 #     Mohammad Akhlaghi <mohammad@akhlaghi.org>
 # Contributing author(s):
-# Copyright (C) 2016-2025 Free Software Foundation, Inc.
+# Copyright (C) 2016-2024 Free Software Foundation, Inc.
 #
 # Gnuastro is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free
@@ -71,7 +71,9 @@
 # space characters in them, quote the full value
 numjobs=8
 builddir=build
-outdir=/home/alvaro/TFM/Development/saturnoAWMLEnoise
+outdir=/home/alvaro/deconvolutiontest/richardsonlucy/saturno_extra_noise2
+
+
 
 
 # Set the utility name, along with its arguments and options. NOTE, for
@@ -87,8 +89,8 @@ outdir=/home/alvaro/TFM/Development/saturnoAWMLEnoise
 #    'if [ -f "$utility" ]; then rm "$utility"; fi'
 # that will delete that particular program.
 utilname=deconvolve
-arguments=saturn_psf_noise_2_3165.fits
-options="--kernel=tess-psf1.fits -A awmle --khdu=0 --hdu=0 -o out/final.fits -i 5  --awmle-sigma=2.3165"
+arguments=saturno_psf_noise.fits
+options="--kernel=tess-psf1.fits -A richardson-lucy --khdu=0 --hdu=0 -a 0.3"
 
 
 
@@ -205,10 +207,14 @@ if make -j$numjobs -C "$builddir"; then
         cp "$srcdir"/bin/*/*.conf .gnuastro/
     fi
 
-    rm -f /home/alvaro/TFM/Development/saturnoAWMLEnoise/out/*
-    # Run the built utility with the given arguments and options.
-    "$utility" $arguments $options $extraopts
+values=(200)
+# values=(1 5 10 20 40 60 80 100 120 140 160 180 200 220 240)
+# values=(1 )
 
+    # Run the built utility with the given arguments and options.
+    for L in "${values[@]}"; do
+    "$utility" $arguments $options -i $L -o ${L}_iteration.fits $extraopts
+done
     # Clean up.
     rm -rf .gnuastro
 fi

@@ -20452,6 +20452,7 @@ For example, cropping out a part of a larger image or convolving the image with 
 * Crop::                        Crop region(s) from a dataset.
 * Arithmetic::                  Arithmetic on input data.
 * Convolve::                    Convolve an image with a kernel.
+* Deconvolve::                  Deconvolve an image with a kernel.
 * Warp::                        Warp/Transform an image to a different grid.
 @end menu
 
@@ -25675,9 +25676,25 @@ Noise has large frequencies which can make the result less reliable for the high
 So all the frequencies which have a spectrum smaller than the value given to the @option{minsharpspec} option in the sharper input image are set to zero and not divided.
 This will cause the wings of the final kernel to be flatter than they would ideally be which will make the convolved image result unreliable if it is too high.
 
-There is a complete tutorial in Gnuastro on how to build the (extended) PSF: @ref{Building the extended PSF}.
-Since the very extended PSF wings can be subtracted before matching (as described in that tutorial), for PSF-matching, you may not need the full extended PSF.
-It it is good to validate how large the PSF to match should be, based on the size of the sources you want to study: if it is a large nearby galaxy, you need a larger PSF, but if it is high redshift galxies, only the inner part of the tutorial above is enough.
+Some notes to on how to prepare your two input PSFs.
+Note that these (and several other issues that relate to an accurate estimation of the PSF) are practically described in the following tutorial: @ref{Building the extended PSF}.
+
+@itemize
+@item
+Choose a bright (unsaturated) star and use a region box (with Crop for example, see @ref{Crop}) that is sufficiently above the noise.
+
+@item
+Mask all background sources that may be nearby (you can use Segment's clumps, see @ref{Segment}).
+
+@item
+Use Warp (see @ref{Warp}) to warp the pixel grid so the star's center is exactly on the center of the central pixel in the cropped image.
+This will certainly slightly degrade the result, however, it is necessary.
+If there are multiple good stars, you can shift all of them, then normalize them (so the sum of each star's pixels is one) and then take their average to decrease this effect.
+
+@item
+The shifting might move the center of the star by one pixel in any direction, so crop the central pixel of the warped image to have a clean image for the deconvolution.
+@end itemize
+
 
 @item -c
 @itemx --minsharpspec
@@ -25688,13 +25705,193 @@ It it is good to validate how large the PSF to match should be, based on the siz
 
 
 
+@section Deconvolve
+
+Astronomical images often degrade due to various factors like the inherent defects in measuring devices, lens optics, or atmospheric turbulence. If these distortions are considered linear and space-invariant, they can be modeled as a convolution between the PSF (a kernel modeling lens distortion) and the original image. However, this is not always the case, as these conditions are rarely met (Jefferies and Christou, 1993), and a non-linear noise term must be added. A detected image, I(x, y), can be expressed as:
+
+@dispmath{
+I(x, y) = (P * O)(x, y) + N(x, y)
+}
+
+
+Where I(x, y) is the recorded image, P(x, y) is the PSF, O(x, y) is the "ideal" image to be reconstructed, and N(x, y) is a noise term including all non-linear distortions. This expression assumes the PSF is linear. The same expression can be converted to the frequency domain using the Fourier transform for easier convolution:
+
+@dispmath{
+I(u, v) = P(u, v) * O(u, v) + N(u, v)
+}
+
+Where u and v are spatial frequencies.
+
+A possible and logical solution is to isolate O(u, v) by dividing the image by the PSF in the Fourier domain and applying the inverse Fourier transform:
+
+@dispmath{
+O(x, y) = FFT^{-1} [ I(u,v) / P(u,v) ]
+}
+
+@dispmath{
+O(x, y) = FFT^{-1} [ O(u,v) + (N(u,v) / P(u,v)) ]
+}
 
 
 
+However, this approach yields poor results because the noise component, when divided by small values near the cutoff frequency of the PSF, corrupts the image. 
+Specifically, the high frequencies where noise is dominant create significant distortions in the final result. In the next sections, better algorithms will be analyzed in order to get better results.
 
 
 
-@node Warp,  , Convolve, Data manipulation
+@menu
+* Weiner-Tikhonov method::  1st algo
+* Richardson-Lucy method::  2nd algo
+* AWMLE method::  3rd algo
+@end menu
+
+@subsection Weiner-Tikhonov method
+
+The Wiener-Tikhonov algorithm is a linear regularization method. Its goal is to minimize the difference between the observed image and the convolution of the object with the point spread function (PSF), 
+leading to a least-squares problem. However, the presence of noise in the image complicates object recovery, so a regularization term is introduced.
+
+One common technique is Tikhonov regularization. In the Fourier domain, the solution takes the form:
+
+@dispmath{
+\hat{O}(u,v) \approx  
+\frac{
+\hat{P}^{*}(u,v)\hat{I}(u,v)
+}{|\hat{P}(u,v)|^{2}+ \lambda  |\hat{H}(u,v)|^{2}}
+}
+
+Here, @math{\lambda} is a regularization parameter that balances fidelity and smoothness in the restored image (Murtagh, Starck, and Pantin, 2002).
+There are cross-validation methods to estimate @math{\lambda} (Golub, Heath, and Wahba, 1979) (Galatsanos and Katsaggelos, 1992), but they are beyond the scope of this document.
+
+In this equation, @math{\hat{P}^{*}(u,v)} represents the conjugate of the PSF in the frequency domain, and @math{\hat{H}(u,v)} is a filter that enhances high frequencies. 
+Since astronomical images of galaxies do not have well-defined edges and this filter is not essential for this study, the equation is simplified by replacing @math{\hat{H}(u,v)} with 1:
+
+@dispmath{
+\hat{O}(u,v) \approx  
+\frac{
+\hat{P}^{*}(u,v)\hat{I}(u,v)
+}{|\hat{P}(u,v)|^{2}+ \lambda }
+}
+
+This algorithm assumes the input only contains Gaussian noise.
+
+
+@subsection Richardson-Lucy method
+
+The Richardson-Lucy iterative algorithm is based on a Bayesian approach. It assumes that pixel values follow a Poisson distribution and provides a maximum likelihood solution.
+
+The Bayesian approach is based on maximizing the probability that an observation is part of the original image, using the conditional probability:
+
+@dispmath{ p(O|I) = \frac{p(I|O)p(O)}{p(I)} }
+
+The solution is found by maximizing the right-hand side of the equation using maximum likelihood. Maximum likelihood methods are commonly used to estimate parameters from noisy data, often with additional constraints. 
+In other words, it is assumed that @math{P(O)} is different from 1. When it is 1, it becomes a maximum likelihood estimation like the RL algorithm.
+
+The algorithm, independently derived by Richardson (Richardson, 1972) and Lucy (Lucy, 1974), takes the following form:
+
+@dispmath{ O^{n+1}(x,y)=K \cdot O^{n}(x,y) * \left[ \frac{I(x,y)}{(PO^{n})(x,y)} * P^{}(x,y) \right]^{\alpha} }
+
+Where @math{O^{n}(x,y)} is the estimate in iteration @math{n}, and @math{O^{n+1}(x,y)} is the estimate in iteration @math{n+1}. 
+A parameter @math{\alpha} is introduced to adjust the speed of the algorithm (with a default value of 1). 
+The parameter @math{K} is used to adjust the pixel values so that their total sum remains constant across successive iterations.
+
+This algorithm assumes the input only contains poisson noise.
+
+@subsection AWMLE method
+
+The AWMLE (Adaptive Wavelets Maximum Likelihood Estimator) algorithm can be understood as an extension of the previously described Richardson-Lucy algorithm. This algorithm additionally assumes that the image contains both Poisson and Gaussian noise.
+
+AWMLE performs a multichannel deconvolution on each plane of a wavelet decomposition (Baena-Gallé and Gladysz, 2011). This presents several advantages, but it is worth noting that Poisson and Gaussian noise concentrate in the highest frequency planes (J.-L. Starck, Murtagh, and Bijaoui, 1998), allowing the deconvolution to be adapted based on the signal-to-noise ratio of each plane.
+
+Like the Richardson-Lucy algorithm, this is an iterative algorithm. In simplified form, the equation describing the estimate in the next iteration is:
+
+@dispmath{ O^{n+1}(x,y) = K O^{n}(x,y) * \left[ \frac{P^{}(x,y) \sum_{t=1}^{D} \left( \left( p_{w}^t + m_t p_{wp}^t - w_t \right) s \right)}{P^{} * O^{n}(x,y)} \right]^{\alpha} }
+
+Where @math{O^{n}(x,y)}, @math{O^{n+1}(x,y)}, @math{\alpha}, and @math{K} play the same role as in the Richardson-Lucy algorithm. @math{w_t} is the wavelet decomposition of @math{P^{*} * O^{n}(x,y)}, 
+@math{p_{w}^t} is the wavelet decomposition of the observed noisy image, and @math{m_t} is a statistical mask that determines whether there is signal or not for a specific pixel. 
+
+
+Where @math{\sigma_i} is the standard deviation within the window @math{\phi} centered at pixel @math{i} of the wavelet plane @math{\omega_j}, 
+@math{\sigma_\omega} is the standard deviation over the entire wavelet plane, and @math{n_f} is the number of pixels in the window. 
+
+@node Invoking astdeconvolve,  , , 
+@subsection Invoking Deconvolve
+
+Deconvolve an input 2D Image with a given kernel.
+The general template for Deconvolve is:
+
+@example
+$ astdeconvolve [OPTION...] ASTRdata
+@end example
+
+@noindent
+One line example:
+
+@example
+## Deconvolve mocking.fits with psf.fits and using Tikhonov algorithm:
+$ astdeconvolve mocking.fits --hdu=0 --kernel=psf.fits --khdu=0 -L 0.1
+ --algorithm=tikhonov
+## The output image will be called mocking_deconvolved.fits
+@end example
+
+The only argument accepted by Deonvolve is an input image file.
+
+
+Here we will only explain the options particular to Deconvolve.
+Run Deconvolve with @option{--help} in order to see the full list of options deconvolve accepts, irrespective of where they are explained in this book.
+
+@table @option
+
+@item First argument 
+@var{string}
+Path to the input image (.fits).
+
+@item -A @code{--algorithm}
+@var{string}
+The algorithm to be used, must be: tikhonov, direct, richardson-lucy or awmle.
+
+@item -h @code{--hdu}
+@var{string}
+The HDU corresponding to the input image.
+
+@item -k @code{--kernel}
+@var{string}
+Path to the PSF (.fits).
+
+@item @code{--khdu}
+@var{string}
+The HDU corresponding to the kernel.
+
+@item -o @code{--output}
+@var{string}
+Path to the output file (.fits).
+
+@item -i @code{--iterations}
+@var{integer}
+Number of iterations for Richardson-Lucy or AWMLE.
+
+@item -a @code{--alpha}
+@var{float}
+Growth factor for Richardson-Lucy or AWMLE.
+
+@item -L @code{--tikhonov-lambda}
+@var{float (0,1)}
+Lambda parameter for the Tikhonov algorithm.
+
+@item -w @code{--awmle-waves}
+@var{integer}
+Number of wavelet planes for AWMLE.
+
+@item -t @code{--awmle-tolerance}
+@var{integer}
+Tolerance for AWMLE.
+
+@item -s @code{--awmle-sigma}
+@var{float}
+Gaussian noise standard deviation for AWMLE.
+
+@end table
+
+@node Warp,  , Deconvolve, Data manipulation
 @section Warp
 Image warping is the process of mapping the pixels of one image onto a new pixel grid.
 This process is sometimes known as transformation, however following the discussion of Heckbert 1989@footnote{Paul S. Heckbert. 1989. @emph{Fundamentals of Texture mapping and Image Warping}, Master's thesis at University of California, Berkeley.} we will not be using that term because it can be confused with only pixel value or flux transformations.
@@ -44502,6 +44699,70 @@ But since @code{indexs->dsize[0]} and @code{indexs->size} have new values after 
 
 Connectivity is a value between @code{1} (fewest number of neighbors) and the number of dimensions in the input (most number of neighbors).
 For example, in a 2D dataset, a connectivity of @code{1} and @code{2} corresponds to 4-connected and 8-connected neighbors.
+@end deftypefun
+
+@node Complex Array Manipulation Functions
+@subsection Complex Array Manipulation Functions (@file{complex.h})
+
+The complex.h library implements operations with complex number vectors. It is based on the functionality of the GSL complex library, a dependency of Gnuastro.
+The data is represented by the @code{gsl_complex_packed_array_type}, which is an array of type double in which the even-numbered indices correspond to the real part and 
+the odd-numbered indices to the imaginary part. Therefore, each complex number occupies two @code{doubles}.
+
+In this scope, the imaginary units is represented by @code{i}.
+
+@subsubsection Complex Array Elemental Operations
+
+@deftypefun {gsl_complex_packed_array} gal_complex_conjugate (gsl_const_complex_packed_array @code{input},  size_t @code{size}).
+Calculate the conjugate of a given array of complex numbers. The conjugate of @code{a + bi} is @code{a - bi}. 
+
+@code{Size} provides the number of elements in the array.
+
+@end deftypefun
+
+@deftypefun {void} gal_complex_normalize (gsl_complex_packed_array @code{inout},  size_t @code{size}).
+Normalise a given array of complex numbers so that sum of all elements is 1. This function takes place in-place and modifies the input array.
+
+@code{Size} provides the number of elements in the array.
+
+@end deftypefun
+
+@deftypefun {void} gal_complex_scale (gsl_complex_packed_array @code{inout}, double @code{value},  size_t @code{size}).
+Multiply a given array of complex numbers by a given scalar number. This function takes place in-place and modifies the input array.
+
+@code{Size} provides the number of elements in the array.
+
+@code{Value} is the scale factor.
+
+@end deftypefun
+
+@subsubsection Operations between Complex Arrays
+
+
+
+
+@deftypefun {gsl_complex_packed_array} gal_complex_multiply (gsl_const_complex_packed_array @code{first},gsl_const_complex_packed_array @code{second}, size_t @code{size}).
+Calculate the multiplication of two given array of complex numbers. The multiplication of @code{a + bi} and @code{c + di} is @code{(ac - db) + (ad + bc)i}. 
+
+@code{Size} provides the number of elements in the array.
+
+@end deftypefun
+
+@deftypefun {gsl_complex_packed_array} gal_complex_divide (gsl_const_complex_packed_array @code{first},gsl_const_complex_packed_array @code{second}, size_t @code{size}, double @code{minvalue}).
+Calculate the division of two given array of complex numbers. The division of @code{a + bi} and @code{c + di} is @code{((ac + db) + (bc - ad)i)/(c^2+d^2)}. 
+
+@code{Size} provides the number of elements in the array.
+
+@code{Minvalue} is the minimum value of the divisor. If the divisor is smaller, the result will be 0 in order to avoid very high values.
+
+@end deftypefun
+
+@subsubsection Complex Array Cumulative Operations
+
+@deftypefun {gsl_complex_packed_array} gal_complex_cumulative_sum (gsl_const_complex_packed_array @code{input},  size_t @code{size}).
+Calculate the addition of all elements from a given array of complex numbers.
+
+@code{Size} provides the number of elements in the array.
+
 @end deftypefun
 
 

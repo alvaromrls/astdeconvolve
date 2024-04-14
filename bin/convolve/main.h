@@ -45,14 +45,7 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 
 
 /* Enumerators */
-enum complex_to_real
-{
-  COMPLEX_TO_REAL_INVALID,           /* ==0 by C standard. */
 
-  COMPLEX_TO_REAL_SPEC,
-  COMPLEX_TO_REAL_PHASE,
-  COMPLEX_TO_REAL_REAL,
-};
 
 enum domain_codes
 {

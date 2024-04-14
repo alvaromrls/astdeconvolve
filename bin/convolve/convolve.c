@@ -35,6 +35,7 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 #include <gnuastro/pointer.h>
 #include <gnuastro/threads.h>
 #include <gnuastro/convolve.h>
+#include <gnuastro/complex.h>
 
 #include <gnuastro-internal/timing.h>
 

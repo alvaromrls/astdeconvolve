@@ -982,6 +982,12 @@ AC_ARG_ENABLE([crop],
               [AS_IF([test "x$enable_crop" != xno],
                      [enable_crop=yes; ayes=true])],
               [enable_crop=notset])
+AC_ARG_ENABLE([deconvolve],
+              [AS_HELP_STRING([--enable-deconvolve],
+                    [Install Deconvolve and other enabled programs.])],
+              [AS_IF([test "x$enable_deconvolve" != xno],
+                     [enable_cognvolve=yes; ayes=true])],
+              [enable_deconvolve=notset])
 AC_ARG_ENABLE([fits],
               [AS_HELP_STRING([--enable-fits],
                     [Install Fits and other enabled programs.])],
@@ -1059,43 +1065,45 @@ AC_ARG_ENABLE([warp],
 # disabled).
 AS_IF([test $ayes = true ],
       [
-       AS_IF([test $enable_arithmetic = notset],  [enable_arithmetic=no])
-       AS_IF([test $enable_buildprog = notset],   [enable_buildprog=no])
-       AS_IF([test $enable_convertt = notset],    [enable_convertt=no])
-       AS_IF([test $enable_convolve = notset],    [enable_convolve=no])
-       AS_IF([test $enable_cosmiccal = notset],   [enable_cosmiccal=no])
-       AS_IF([test $enable_crop = notset],        [enable_crop=no])
-       AS_IF([test $enable_fits = notset],        [enable_fits=no])
-       AS_IF([test $enable_match = notset],       [enable_match=no])
-       AS_IF([test $enable_mkcatalog = notset],   [enable_mkcatalog=no])
-       AS_IF([test $enable_mkprof = notset],      [enable_mkprof=no])
-       AS_IF([test $enable_noisechisel = notset], [enable_noisechisel=no])
-       AS_IF([test $enable_query = notset],       [enable_query=no])
-       AS_IF([test $enable_segment = notset],     [enable_segment=no])
-       AS_IF([test $enable_statistics = notset],  [enable_statistics=no])
-       AS_IF([test $enable_table = notset],       [enable_table=no])
-#      AS_IF([test $enable_TEMPLATE = notset],    [enable_TEMPLATE=no])
-       AS_IF([test $enable_warp = notset],        [enable_warp=no])
+       AS_IF([test $enable_arithmetic = notset],      [enable_arithmetic=no])
+       AS_IF([test $enable_buildprog = notset],       [enable_buildprog=no])
+       AS_IF([test $enable_convertt = notset],        [enable_convertt=no])
+       AS_IF([test $enable_convolve = notset],        [enable_convolve=no])
+       AS_IF([test $enable_cosmiccal = notset],       [enable_cosmiccal=no])
+       AS_IF([test $enable_crop = notset],            [enable_crop=no])
+       AS_IF([test $enable_deconvolve = notset],   [enable_deconvolve=no])
+       AS_IF([test $enable_fits = notset],            [enable_fits=no])
+       AS_IF([test $enable_match = notset],           [enable_match=no])
+       AS_IF([test $enable_mkcatalog = notset],       [enable_mkcatalog=no])
+       AS_IF([test $enable_mkprof = notset],          [enable_mkprof=no])
+       AS_IF([test $enable_noisechisel = notset],     [enable_noisechisel=no])
+       AS_IF([test $enable_query = notset],           [enable_query=no])
+       AS_IF([test $enable_segment = notset],         [enable_segment=no])
+       AS_IF([test $enable_statistics = notset],      [enable_statistics=no])
+       AS_IF([test $enable_table = notset],           [enable_table=no])
+#      AS_IF([test $enable_TEMPLATE = notset],        [enable_TEMPLATE=no])
+       AS_IF([test $enable_warp = notset],            [enable_warp=no])
        ],
 
       [
-       AS_IF([test $enable_arithmetic = notset],  [enable_arithmetic=yes])
-       AS_IF([test $enable_buildprog = notset],   [enable_buildprog=yes])
-       AS_IF([test $enable_convertt = notset],    [enable_convertt=yes])
-       AS_IF([test $enable_convolve = notset],    [enable_convolve=yes])
-       AS_IF([test $enable_cosmiccal = notset],   [enable_cosmiccal=yes])
-       AS_IF([test $enable_crop = notset],        [enable_crop=yes])
-       AS_IF([test $enable_fits = notset],        [enable_fits=yes])
-       AS_IF([test $enable_match = notset],       [enable_match=yes])
-       AS_IF([test $enable_mkcatalog = notset],   [enable_mkcatalog=yes])
-       AS_IF([test $enable_mkprof = notset],      [enable_mkprof=yes])
-       AS_IF([test $enable_noisechisel = notset], [enable_noisechisel=yes])
-       AS_IF([test $enable_query = notset],       [enable_query=yes])
-       AS_IF([test $enable_segment = notset],     [enable_segment=yes])
-       AS_IF([test $enable_statistics = notset],  [enable_statistics=yes])
-       AS_IF([test $enable_table = notset],       [enable_table=yes])
-#      AS_IF([test $enable_TEMPLATE = notset],    [enable_TEMPLATE=yes])
-       AS_IF([test $enable_warp = notset],        [enable_warp=yes])
+       AS_IF([test $enable_arithmetic = notset],      [enable_arithmetic=yes])
+       AS_IF([test $enable_buildprog = notset],       [enable_buildprog=yes])
+       AS_IF([test $enable_convertt = notset],        [enable_convertt=yes])
+       AS_IF([test $enable_convolve = notset],        [enable_convolve=yes])
+       AS_IF([test $enable_cosmiccal = notset],       [enable_cosmiccal=yes])
+       AS_IF([test $enable_crop = notset],            [enable_crop=yes])
+       AS_IF([test $enable_deconvolve = notset],   [enable_deconvolve=yes])
+       AS_IF([test $enable_fits = notset],            [enable_fits=yes])
+       AS_IF([test $enable_match = notset],           [enable_match=yes])
+       AS_IF([test $enable_mkcatalog = notset],       [enable_mkcatalog=yes])
+       AS_IF([test $enable_mkprof = notset],          [enable_mkprof=yes])
+       AS_IF([test $enable_noisechisel = notset],     [enable_noisechisel=yes])
+       AS_IF([test $enable_query = notset],           [enable_query=yes])
+       AS_IF([test $enable_segment = notset],         [enable_segment=yes])
+       AS_IF([test $enable_statistics = notset],      [enable_statistics=yes])
+       AS_IF([test $enable_table = notset],           [enable_table=yes])
+#      AS_IF([test $enable_TEMPLATE = notset],        [enable_TEMPLATE=yes])
+       AS_IF([test $enable_warp = notset],            [enable_warp=yes])
        ]
      )
 
@@ -1112,23 +1120,24 @@ AS_IF([test "x$usable_libtool" = "xno"], [enable_buildprog=no])
 
 
 # Make the enable_package values available for the Makefile:
-AM_CONDITIONAL([COND_ARITHMETIC],  [test $enable_arithmetic = yes])
-AM_CONDITIONAL([COND_BUILDPROG],   [test $enable_buildprog = yes])
-AM_CONDITIONAL([COND_CONVERTT],    [test $enable_convertt = yes])
-AM_CONDITIONAL([COND_CONVOLVE],    [test $enable_convolve = yes])
-AM_CONDITIONAL([COND_COSMICCAL],   [test $enable_cosmiccal = yes])
-AM_CONDITIONAL([COND_CROP],        [test $enable_crop = yes])
-AM_CONDITIONAL([COND_FITS],        [test $enable_fits = yes])
-AM_CONDITIONAL([COND_MATCH],       [test $enable_match = yes])
-AM_CONDITIONAL([COND_MKCATALOG],   [test $enable_mkcatalog = yes])
-AM_CONDITIONAL([COND_MKPROF],      [test $enable_mkprof = yes])
-AM_CONDITIONAL([COND_NOISECHISEL], [test $enable_noisechisel = yes])
-AM_CONDITIONAL([COND_QUERY],       [test $enable_query = yes])
-AM_CONDITIONAL([COND_SEGMENT],     [test $enable_segment = yes])
-AM_CONDITIONAL([COND_STATISTICS],  [test $enable_statistics = yes])
-AM_CONDITIONAL([COND_TABLE],       [test $enable_table = yes])
-#AM_CONDITIONAL([COND_TEMPLATE],   [test $enable_TEMPLATE = yes])
-AM_CONDITIONAL([COND_WARP],        [test $enable_warp = yes])
+AM_CONDITIONAL([COND_ARITHMETIC],   [test $enable_arithmetic = yes])
+AM_CONDITIONAL([COND_BUILDPROG],    [test $enable_buildprog = yes])
+AM_CONDITIONAL([COND_CONVERTT],     [test $enable_convertt = yes])
+AM_CONDITIONAL([COND_CONVOLVE],     [test $enable_convolve = yes])
+AM_CONDITIONAL([COND_COSMICCAL],    [test $enable_cosmiccal = yes])
+AM_CONDITIONAL([COND_CROP],         [test $enable_crop = yes])
+AM_CONDITIONAL([COND_DECONVOLVE],[test $enable_deconvolve = yes])
+AM_CONDITIONAL([COND_FITS],         [test $enable_fits = yes])
+AM_CONDITIONAL([COND_MATCH],        [test $enable_match = yes])
+AM_CONDITIONAL([COND_MKCATALOG],    [test $enable_mkcatalog = yes])
+AM_CONDITIONAL([COND_MKPROF],       [test $enable_mkprof = yes])
+AM_CONDITIONAL([COND_NOISECHISEL],  [test $enable_noisechisel = yes])
+AM_CONDITIONAL([COND_QUERY],        [test $enable_query = yes])
+AM_CONDITIONAL([COND_SEGMENT],      [test $enable_segment = yes])
+AM_CONDITIONAL([COND_STATISTICS],   [test $enable_statistics = yes])
+AM_CONDITIONAL([COND_TABLE],        [test $enable_table = yes])
+#AM_CONDITIONAL([COND_TEMPLATE],    [test $enable_TEMPLATE = yes])
+AM_CONDITIONAL([COND_WARP],         [test $enable_warp = yes])
 
 
 
@@ -1174,6 +1183,7 @@ AC_CONFIG_FILES([Makefile
                  bin/statistics/Makefile
                  bin/noisechisel/Makefile
                  bootstrapped/lib/Makefile
+                 bin/deconvolve/Makefile
                  bootstrapped/tests/Makefile
                  ])
 

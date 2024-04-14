@@ -26,6 +26,7 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 /* Include other headers if necessary here. Note that other header files
    must be included before the C++ preparations below */
 #include <gnuastro/data.h>
+#include <gnuastro/fft.h>
 
 /* C++ Preparations */
 #undef __BEGIN_C_DECLS
@@ -56,6 +57,11 @@ gal_convolve_spatial_correct_ch_edge(gal_data_t *tiles, gal_data_t *kernel,
                                      int conv_on_blank,
                                      gal_data_t *tocorrect);
 
+gsl_complex_packed_array
+gal_convolve_frequency (gsl_complex_packed_array first, 
+                        gsl_complex_packed_array second, 
+                        size_t xsize, size_t ysize,
+                        size_t numthreads, size_t minmapsize);
 
 
 __END_C_DECLS    /* From C++ preparations */

@@ -111,11 +111,14 @@ libgnuastro_la_SOURCES = \
   box.c \
   checkset.c \
   color.c \
+  complex.c \
   convolve.c \
   cosmology.c \
   data.c \
+  deconvolve.c \
   ds9.c \
   eps.c \
+  fft.c \
   fit.c \
   fits.c \
   git.c \
@@ -146,6 +149,7 @@ libgnuastro_la_SOURCES = \
   type.c \
   units.c \
   warp.c \
+  wavelet.c \
   wcs.c
 
 
@@ -164,12 +168,15 @@ pkginclude_HEADERS = gnuastro/config.h \
   $(headersdir)/blank.h \
   $(headersdir)/box.h \
   $(headersdir)/color.h \
+  $(headersdir)/complex.h \
   $(headersdir)/convolve.h \
   $(headersdir)/cosmology.h \
   $(headersdir)/data.h \
   $(headersdir)/dimension.h \
+  $(headersdir)/deconvolve.h \
   $(headersdir)/ds9.h \
   $(headersdir)/eps.h \
+  $(headersdir)/fft.h \
   $(headersdir)/fit.h \
   $(headersdir)/fits.h \
   $(headersdir)/git.h \
@@ -195,6 +202,7 @@ pkginclude_HEADERS = gnuastro/config.h \
   $(headersdir)/type.h \
   $(headersdir)/units.h \
   $(headersdir)/warp.h \
+  $(headersdir)/wavelet.h \
   $(headersdir)/wcs.h
 
 
