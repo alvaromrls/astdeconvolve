@@ -87,10 +87,14 @@ outdir=~/tmp/in-progress/noisechisel-tile-init
 # the script, you have to add a line under the line below
 #    'if [ -f "$utility" ]; then rm "$utility"; fi'
 # that will delete that particular program.
-utilname=noisechisel
-arguments=/mnt/scratch/build/arrakihs-pipeline/analysis/stacks/d4.fits
-options="--checkqthresh --checktiles --continueaftercheck --tilesize=20,20"
+#utilname=noisechisel
+#arguments=i-sdss.fits
+#options="--checkqthresh -N1"
 
+outdir=~/tmp
+utilname=statistics
+arguments=gaussian.fits
+options="--quantofmean --concentration=0.25"
 
 
 
@@ -208,7 +212,7 @@ if make -j$numjobs -C "$builddir"; then
 
     # Run the built utility with the given arguments and options.
     rm -f table-*.fits
-    "$utility" $arguments $options $extraopts
+    "$utility" $arguments $options $extraopts #| asttable -Y
 
     # Clean up.
     rm -rf .gnuastro

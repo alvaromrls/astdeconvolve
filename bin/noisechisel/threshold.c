@@ -465,7 +465,7 @@ qthresh_on_tile_concentrated(gal_data_t *usage, double q_value_diff,
                              size_t tind)
 {
   int out=0;
-  size_t j, one=1;
+  size_t i, one=1;
   double qf1, qf2;
   float *uarr=usage->array;
   gal_data_t *qf1_d, *qf2_d, *qfinput;
@@ -483,7 +483,7 @@ qthresh_on_tile_concentrated(gal_data_t *usage, double q_value_diff,
                          NULL, NULL, NULL);
 
   /* Bring all values between 0 to 1 and estimate the quantiles. */
-  for(j=0;j<usage->size;++j) uarr[j]=(uarr[j]-umin)/(umax-umin);
+  for(i=0;i<usage->size;++i) uarr[i]=(uarr[i]-umin)/(umax-umin);
   ((float *)(qfinput->array))[0]=0.25;
   qf1_d=gal_statistics_quantile_function(usage, qfinput, 1);
   ((float *)(qfinput->array))[0]=0.75;
@@ -491,11 +491,28 @@ qthresh_on_tile_concentrated(gal_data_t *usage, double q_value_diff,
   qf1=((double *)(qf1_d->array))[0];
   qf2=((double *)(qf2_d->array))[0];
 
+  /**********************************************/
+  /* You are considering dividing by the given width to produce a value of
+     1 and larger, like below. When we decrease the central difference (for
+     example '--quantile=0.4,0.6', the tile-3 of the 'isdss' image
+     separates better from the normal distribution. */
+
+  /* for f in junk-sigma.fits junk-uniform.fits tile-3-i-sdss.txt; do printf "$f: "; aststatistics $f --quantfunc=0.25,0.75 | asttable -c'arith $2 $1 - 0.5 /' -Y; done */
+  /**********************************************/
+
+
+  /* For a check. */
+  if(tind!=-1)
+    {
+      printf("Tile %zu values:\n", tind);
+      for(i=0;i<usage->size;++i) printf("\t%f\n", uarr[i]);
+    }
+
   /* Final returned value (placed here so we can check it if necessary):
      also because we need to correct the values. */
   out = qf2-qf1>q_value_diff;
   if(out)
-    for(j=0;j<usage->size;++j) uarr[j]=uarr[j]*(umax-umin)+umin;
+    for(i=0;i<usage->size;++i) uarr[i]=uarr[i]*(umax-umin)+umin;
 
   /* For a check (to disable the print, set 'tind' to -1). */
   if(tind!=-1)
@@ -653,7 +670,7 @@ qthresh_on_tile(void *in_prm)
           && meanquant<0.5f
           && meanquant>0.5f-p->meanmedqdiff
           && (float)usage->size/(float)initsize > 0.75
-          && qthresh_on_tile_concentrated(usage, 0.8, -1) )
+          && qthresh_on_tile_concentrated(usage, 0.8, tind) )
         {
 
           /* The mean was found on the wider convolved image, but the
