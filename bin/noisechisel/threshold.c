@@ -297,17 +297,9 @@ threshold_interp_smooth(struct noisechiselparams *p, gal_data_t **first,
   if(filename)
     {
       (*first)->name="THRESH1_INTERP";
-      (*second)->name="THRESH2_INTERP";
-      if(third) (*third)->name="THRESH3_INTERP";
       gal_tile_full_values_write(*first, tl, !p->ignoreblankintiles,
                                  filename, NULL, 0);
-      gal_tile_full_values_write(*second, tl, !p->ignoreblankintiles,
-                                 filename, NULL, 0);
-      if(third)
-        gal_tile_full_values_write(*third, tl, !p->ignoreblankintiles,
-                                   filename, NULL, 0);
-      (*first)->name = (*second)->name = NULL;
-      if(third) (*third)->name=NULL;
+      (*first)->name = NULL;
     }
 
   /* Smooth the threshold if requested. */
@@ -338,17 +330,9 @@ threshold_interp_smooth(struct noisechiselparams *p, gal_data_t **first,
       if(filename)
         {
           (*first)->name="THRESH1_SMOOTH";
-          (*second)->name="THRESH2_SMOOTH";
-          if(third) (*third)->name="THRESH3_SMOOTH";
           gal_tile_full_values_write(*first, tl, !p->ignoreblankintiles,
                                      filename, NULL, 0);
-          gal_tile_full_values_write(*second, tl, !p->ignoreblankintiles,
-                                     filename, NULL, 0);
-          if(third)
-            gal_tile_full_values_write(*third, tl, !p->ignoreblankintiles,
-                                       filename, NULL, 0);
-          (*first)->name = (*second)->name = NULL;
-          if(third) (*third)->name=NULL;
+          (*first)->name=NULL;
         }
     }
 }
@@ -455,82 +439,31 @@ qthresh_on_tile_mean_quant(gal_data_t *usage)
 
 
 
-/* Bring 'usage' in the range from 0 to 1; then find the difference between
-   the values at quantile 0.25 to 0.75. In a Uniform distribution, this is
-   0.5 (0.75-0.25), but in a Gaussian distribution this is about 0.16
-   (because most values are concentrated in the center of the
-   distribution). */
+/* See if the tile's distribution is concentrated or not. */
 static int
-qthresh_on_tile_concentrated(gal_data_t *usage, double q_value_diff,
-                             size_t tind)
+qthresh_on_tile_concentrated(gal_data_t *usage, double width,
+                             double thresh, size_t tind)
 {
   int out=0;
-  size_t i, one=1;
-  double qf1, qf2;
-  float *uarr=usage->array;
-  gal_data_t *qf1_d, *qf2_d, *qfinput;
-  float umin=uarr[0], umax=uarr[usage->size-1];
+  double *m;
+  gal_data_t *measured;
 
   /* Small sanity check. */
   if(usage->type!=GAL_TYPE_FLOAT32)
-    error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at '%s' to fix "
-          "the problem. The type of the 'usage' array should be float32, "
-          "but it is '%s'", __func__, PACKAGE_BUGREPORT,
+    error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at '%s' to "
+          "fix the problem. The type of the 'usage' array should be "
+          "float32, but it is '%s'", __func__, PACKAGE_BUGREPORT,
           gal_type_name(usage->type, 1));
 
-  /* Allocate the dataset to hold the quantile value. */
-  qfinput=gal_data_alloc(NULL, usage->type, 1, &one, NULL, 0, -1, 1,
-                         NULL, NULL, NULL);
+  /* Measure the concentration. */
+  measured=gal_statistics_concentration(usage, width, 1);
+  m=measured->array;
 
-  /* Bring all values between 0 to 1 and estimate the quantiles. */
-  for(i=0;i<usage->size;++i) uarr[i]=(uarr[i]-umin)/(umax-umin);
-  ((float *)(qfinput->array))[0]=0.25;
-  qf1_d=gal_statistics_quantile_function(usage, qfinput, 1);
-  ((float *)(qfinput->array))[0]=0.75;
-  qf2_d=gal_statistics_quantile_function(usage, qfinput, 1);
-  qf1=((double *)(qf1_d->array))[0];
-  qf2=((double *)(qf2_d->array))[0];
-
-  /**********************************************/
-  /* You are considering dividing by the given width to produce a value of
-     1 and larger, like below. When we decrease the central difference (for
-     example '--quantile=0.4,0.6', the tile-3 of the 'isdss' image
-     separates better from the normal distribution. */
-
-  /* for f in junk-sigma.fits junk-uniform.fits tile-3-i-sdss.txt; do printf "$f: "; aststatistics $f --quantfunc=0.25,0.75 | asttable -c'arith $2 $1 - 0.5 /' -Y; done */
-  /**********************************************/
-
-
-  /* For a check. */
-  if(tind!=-1)
-    {
-      printf("Tile %zu values:\n", tind);
-      for(i=0;i<usage->size;++i) printf("\t%f\n", uarr[i]);
-    }
-
-  /* Final returned value (placed here so we can check it if necessary):
-     also because we need to correct the values. */
-  out = qf2-qf1>q_value_diff;
-  if(out)
-    for(i=0;i<usage->size;++i) uarr[i]=uarr[i]*(umax-umin)+umin;
-
-  /* For a check (to disable the print, set 'tind' to -1). */
-  if(tind!=-1)
-    {
-      printf("%s:%zu: umin: %f, umax: %f\n", __func__, tind, umin, umax);
-      printf("%s:%zu: qf1: %f,  qf2: %f, qdiff=%f\n",  __func__, tind,
-             qf1, qf2, qf2-qf1);
-      printf("%s:%zu: Thresh: %f. Result: %s\n", __func__, tind,
-             q_value_diff, out?"PASSED":"FAILED");
-      gal_table_write(usage, NULL, NULL, GAL_TABLE_FORMAT_BFITS,
-                      "table-usage.fits", NULL, 0, 0);
-      exit(0);
-    }
+  /* See if it is above the threshold or not. */
+  out = m[0] > thresh;
 
   /* Clean up and return. */
-  gal_data_free(qfinput);
-  gal_data_free(qf1_d);
-  gal_data_free(qf2_d);
+  gal_data_free(measured);
   return out;
 }
 
@@ -596,11 +529,11 @@ qthresh_on_tile(void *in_prm)
   struct noisechiselparams *p=qprm->p;
 
   size_t initsize;
-  double meanquant;
   void *tarray=NULL;
   int type=qprm->erode_th->type;
   size_t i, tind, ndim=p->input->ndim;
   gal_data_t *tile, *usage, *tblock=NULL;
+  double meanquant, *concent=p->concentration->array;
   gal_data_t *meanconv = p->wconv ? p->wconv : p->conv;
 
   /* Put the temporary usage space for this thread into a data set for easy
@@ -621,26 +554,7 @@ qthresh_on_tile(void *in_prm)
       tile=&p->cp.tl.tiles[tind];
       initsize=qthresh_on_tile_usage_prepare(p, usage, tile, meanconv);
 
-      /* For a check...
-      char *plab=NULL;
-      switch(tind)
-        {
-        case -1: plab="BAD"; break;
-      //case 11031: case 14951: case 27470: case 27673: plab="GOOD"; break;
-        }
-      if(plab)
-        {
-          char tname[100];
-          sprintf(tname, "table-%zu-before.fits", tind);
-          gal_table_write(usage, NULL, NULL, GAL_TABLE_FORMAT_BFITS, tname,
-                          NULL, 0, 0);
-        }
-      */
-
-      /* Find the mean's quantile after clipping inplace. */
-      meanquant=qthresh_on_tile_mean_quant(usage);
-
-      /* For a check: to have each tile that you want to study in a
+      /* For a check. To have each tile that you want to study in a
          separate FITS file, you can use the commands below:
 
          $ astnoisechisel img.fits --checkqthresh --checktiles \
@@ -651,26 +565,44 @@ qthresh_on_tile(void *in_prm)
                            img_qthresh.fits -h1 set-i \
                            i l $i ne nan where trim -o crop-$i.fits;
            done
-
+      */
+      char *plab=NULL;
+      switch(tind)
+        {
+        case 1954: plab="BAD"; break;
+      //case XXXX: case YYYY: plab="GOOD"; break;
+        }
       if(plab)
         {
           char tname[100];
-          printf("%s:%s:%zu: %f (before: %zu, after: %zu). result: %d\n",
-                 __func__, plab, tind, meanq, beforeclip, usage->size,
-                 (meanq<0.5f && meanq>0.5-p->meanmedqdiff) );
+          sprintf(tname, "table-%zu-before.fits", tind);
+          gal_table_write(usage, NULL, NULL, GAL_TABLE_FORMAT_BFITS, tname,
+                          NULL, 0, 0);
+        }
+      /**/
+
+      /* Find the mean's quantile after clipping inplace. */
+      meanquant=qthresh_on_tile_mean_quant(usage);
+
+      /* For a check: */
+      if(plab)
+        {
+          char tname[100];
           sprintf(tname, "table-%zu-after.fits", tind);
           gal_table_write(usage, NULL, NULL, GAL_TABLE_FORMAT_BFITS, tname,
                           NULL, 0, 0);
         }
-      */
+      /**/
 
-      /* Only continue if the mean's quantile is close enough to the
-         median.  */
-      if( meanquant
-          && meanquant<0.5f
+      /* Only continue when: 1) the mean's quantile is below the median,
+         but not too much (close enough to the median). 2) The faction of
+         usable pixels is not too small. 3) the flux distribution is
+         concentrated. */
+      if( meanquant<0.5f
           && meanquant>0.5f-p->meanmedqdiff
-          && (float)usage->size/(float)initsize > 0.75
-          && qthresh_on_tile_concentrated(usage, 0.8, tind) )
+          && (float)usage->size/(float)initsize > p->minskyfrac
+          && qthresh_on_tile_concentrated(usage, concent[0], concent[1],
+                                          tind) )
         {
 
           /* The mean was found on the wider convolved image, but the
@@ -862,23 +794,10 @@ threshold_quantile_find_apply(struct noisechiselparams *p)
   if(p->qthreshname)
     {
       qprm.erode_th->name="QTHRESH_ERODE";
-      qprm.noerode_th->name="QTHRESH_NOERODE";
       gal_tile_full_values_write(qprm.erode_th, tl,
                                  !p->ignoreblankintiles,
                                  p->qthreshname, NULL, 0);
-      gal_tile_full_values_write(qprm.noerode_th, tl,
-                                 !p->ignoreblankintiles,
-                                 p->qthreshname, NULL, 0);
       qprm.erode_th->name=qprm.noerode_th->name=NULL;
-
-      if(qprm.expand_th)
-        {
-          qprm.expand_th->name="QTHRESH_EXPAND";
-          gal_tile_full_values_write(qprm.expand_th, tl,
-                                     !p->ignoreblankintiles,
-                                     p->qthreshname, NULL, 0);
-          qprm.expand_th->name=NULL;
-        }
     }
 
 

@@ -87,15 +87,9 @@ outdir=~/tmp/in-progress/noisechisel-tile-init
 # the script, you have to add a line under the line below
 #    'if [ -f "$utility" ]; then rm "$utility"; fi'
 # that will delete that particular program.
-#utilname=noisechisel
-#arguments=i-sdss.fits
-#options="--checkqthresh -N1"
-
-outdir=~/tmp
-utilname=statistics
-arguments=gaussian.fits
-options="--quantofmean --concentration=0.25"
-
+utilname=noisechisel
+arguments=i-sdss.fits
+options="--checkqthresh"
 
 
 

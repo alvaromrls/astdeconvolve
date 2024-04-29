@@ -199,6 +199,20 @@ struct argp_option program_options[] =
       GAL_OPTIONS_NOT_SET
     },
     {
+      "concentration",
+      UI_KEY_CONCENTRATION,
+      "FLT,FLT",
+      0,
+      "Concentration width and threshold.",
+      UI_GROUP_DETECTION,
+      &p->concentration,
+      GAL_TYPE_FLOAT64,
+      GAL_OPTIONS_RANGE_ANY,
+      GAL_OPTIONS_MANDATORY,
+      GAL_OPTIONS_NOT_SET,
+      gal_options_parse_csv_float64
+    },
+    {
       "qthresh",
       UI_KEY_QTHRESH,
       "FLT",

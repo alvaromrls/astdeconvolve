@@ -224,6 +224,8 @@ parse_opt(int key, char *arg, struct argp_state *state)
 static void
 ui_check_only_options(struct noisechiselparams *p)
 {
+  double *concent=p->concentration->array;
+
   /* If the convolved option is given, then the convolved HDU is also
      mandatory. */
   if(p->convolvedname && p->chdu==NULL)
@@ -267,11 +269,12 @@ ui_check_only_options(struct noisechiselparams *p)
     {
       /* If it is FITS, see if a HDU has been provided. */
       if( gal_fits_file_recognized(p->widekernelname) && p->whdu==NULL )
-        error(EXIT_FAILURE, 0, "no HDU specified for the given wide kernel "
-              "('%s'). When the wide kernel is a FITS file, a HDU must also "
-              "be specified. You can use the '--whdu' option and give it the "
-              "HDU number (starting from zero), extension name, or any "
-              "HDU identifier acceptable by CFITSIO", p->widekernelname);
+        error(EXIT_FAILURE, 0, "no HDU specified for the given wide "
+              "kernel ('%s'). When the wide kernel is a FITS file, a "
+              "HDU must also be specified. You can use the '--whdu' "
+              "option and give it the HDU number (starting from zero), "
+              "extension name, or any HDU identifier acceptable by "
+              "CFITSIO", p->widekernelname);
     }
 
   /* If the S/N quantile is less than 0.1 (an arbitrary small value), this
@@ -308,6 +311,16 @@ ui_check_only_options(struct noisechiselparams *p)
           "book (with this command: 'info gnuastro \"Quantifying "
           "signal in a tile\"'. To suppress this warning, please use "
           "the '--quiet' option", p->meanmedqdiff);
+
+  /* Concentration checks. */
+  if(concent[0]<=0.0f || concent[0]>0.5f)
+    error(EXIT_FAILURE, 0, "the first value given to '--concentration' "
+          "must be positive and smaller than 0.5. This is because it is "
+          "the width around the median in quantiles");
+  if(concent[1]<=0.0f)
+    error(EXIT_FAILURE, 0, "the second value given to '--concentration' "
+          "must be positive. This is because it is a fraction of two "
+          "positive numbers");
 }
 
 

@@ -69,8 +69,8 @@ detection_ngb_to_connectivity(size_t ndim, size_t ngb)
       connectivity = ngb==6 ? 1 : (ngb==18 ? 2 : 3);
       break;
     default:
-      error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s to address "
-            "the problem. %zu not a valid value to `ndim'",
+      error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s to "
+            "address the problem. %zu not a valid value to `ndim'",
             __func__, PACKAGE_BUGREPORT, ndim);
     }
   return connectivity;
@@ -1134,7 +1134,8 @@ detection(struct noisechiselparams *p)
   /* Report for the user. */
   if(!p->cp.quiet)
     {
-      gal_timing_report(NULL, "Starting to find/remove false detections.", 1);
+      gal_timing_report(NULL, "Starting to find/remove false detections.",
+                        1);
       gettimeofday(&t0, NULL);
     }
 

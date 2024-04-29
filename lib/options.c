@@ -1500,7 +1500,7 @@ gal_options_parse_csv_float64(struct argp_option *option, char *arg,
       values = *(gal_data_t **)(option->value);
       darray=values->array;
 
-      /* Write each string into the output string. */
+      /* Write each number into the output string. */
       nc=0;
       for(i=0;i<values->size;++i)
         {

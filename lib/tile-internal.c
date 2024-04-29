@@ -709,20 +709,6 @@ gal_tileinternal_no_outlier_local(gal_data_t *input, gal_data_t *second,
       input->name="VALUE1_NO_OUTLIER";
       gal_tile_full_values_write(input, tl, 1, filename, NULL, 0);
       input->name=NULL;
-      if(second)
-        {
-          second->name="VALUE2_NO_OUTLIER";
-          gal_tile_full_values_write(second, tl, 1, filename,
-                                     NULL, 0);
-          second->name=NULL;
-        }
-      if(third)
-        {
-          third->name="VALUE3_NO_OUTLIER";
-          gal_tile_full_values_write(third, tl, 1, filename,
-                                     NULL, 0);
-          third->name=NULL;
-        }
     }
 
 
