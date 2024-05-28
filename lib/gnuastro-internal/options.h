@@ -122,14 +122,11 @@ enum options_common_keys
   GAL_OPTIONS_KEY_CHECKCONFIG,
   GAL_OPTIONS_KEY_ONLYVERSION,
   GAL_OPTIONS_KEY_CONFIGPREFIX,
-  GAL_OPTIONS_KEY_INTERPMETRIC,
   GAL_OPTIONS_KEY_STDINTIMEOUT,
-  GAL_OPTIONS_KEY_INTERPNUMNGB,
   GAL_OPTIONS_KEY_OUTFITSNODATE,
   GAL_OPTIONS_KEY_ONEELEMPERTILE,
   GAL_OPTIONS_KEY_OUTFITSNOCONFIG,
   GAL_OPTIONS_KEY_OUTFITSNOCOMMIT,
-  GAL_OPTIONS_KEY_INTERPONLYBLANK,
   GAL_OPTIONS_KEY_WCSLINEARMATRIX,
   GAL_OPTIONS_KEY_OUTFITSNOVERSIONS,
 };
@@ -188,9 +185,6 @@ struct gal_options_common_params
 {
   /* Tessellation. */
   struct gal_tile_two_layer_params tl; /* Two layer tessellation params.  */
-  uint8_t      interponlyblank; /* Only interpolate over blank values.    */
-  uint8_t         interpmetric; /* Metric to use for nearest-ngb interp.  */
-  size_t          interpnumngb; /* Number of neighbors for interpolation. */
 
   /* Input. */
   char                    *hdu; /* Image extension.                       */
@@ -333,6 +327,11 @@ void *
 gal_options_parse_sizes_reverse(struct argp_option *option, char *arg,
                                 char *filename, size_t lineno,
                                 void *params);
+
+/* Convert the output of 'gal_options_parse_sizes_reverse' into a correctly
+   ordered list. */
+gal_list_sizet_t *
+gal_options_sizes_array_to_list(size_t *array);
 
 void *
 gal_options_parse_csv_float64(struct argp_option *option, char *arg,

@@ -71,7 +71,7 @@
 # space characters in them, quote the full value
 numjobs=8
 builddir=build
-outdir=
+outdir=~/tmp
 
 
 
@@ -87,9 +87,9 @@ outdir=
 # the script, you have to add a line under the line below
 #    'if [ -f "$utility" ]; then rm "$utility"; fi'
 # that will delete that particular program.
-utilname=
-arguments=
-options=
+utilname=noisechisel
+arguments=sdss.fits
+options="--outliernumngb=5000000,500000000"
 
 
 

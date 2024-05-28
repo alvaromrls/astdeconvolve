@@ -66,11 +66,11 @@ gal_tileinternal_no_outlier(gal_data_t *first, gal_data_t *second,
                             double *outliersclip, float outliersigma,
                             char *filename);
 
-void
+size_t
 gal_tileinternal_no_outlier_local(gal_data_t *input, gal_data_t *second,
                                   gal_data_t *third,
                                   struct gal_tile_two_layer_params *tl,
-                                  uint8_t metric, size_t numneighbors,
+                                  uint8_t metric, size_t *numngbs,
                                   size_t numthreads, double *outliersclip,
                                   double outliersigma, char *filename,
                                   char *optionname);

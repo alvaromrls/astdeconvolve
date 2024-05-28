@@ -309,7 +309,8 @@ struct tileinternal_outlier_local
   gal_data_t                    *input;
   gal_data_t                  *measure;
   gal_data_t                   *blanks;
-  size_t                  numneighbors;
+  size_t                        minngb;
+  size_t                        maxngb;
   uint8_t                *thread_flags;
   gal_list_void_t            *ngb_vals;
   char                     *optionname;
@@ -373,10 +374,10 @@ gal_tileinternal_no_outlier_local_on_thread(void *in_prm)
   tin=input;
   for(tvll=prm->ngb_vals; tvll!=NULL; tvll=tvll->next)
     {
-      nv=gal_pointer_increment(tvll->v, tprm->id*prm->numneighbors,
+      nv=gal_pointer_increment(tvll->v, tprm->id*prm->maxngb,
                                input->type);
       gal_list_data_add_alloc(&nearest, nv, tin->type, 1,
-                              &prm->numneighbors, NULL, 0, -1, 1,
+                              &prm->maxngb, NULL, 0, -1, 1,
                               NULL, NULL, NULL);
       tin=tin->next;
     }
@@ -458,7 +459,7 @@ gal_tileinternal_no_outlier_local_on_thread(void *in_prm)
 
               /* If we have filled all the elements clean up the linked
                  list and break out. */
-              if(++ngb_counter>=prm->numneighbors)
+              if(++ngb_counter>=prm->maxngb)
                 {
                   if(lQ) gal_list_dosizet_free(lQ);
                   break;
@@ -490,33 +491,51 @@ gal_tileinternal_no_outlier_local_on_thread(void *in_prm)
            } );
 
           /* If there are no more meshes to add to the queue, then this
-             shows, there were not enough points for
-             interpolation. Normally, this loop should only be exited
-             through the 'currentnum>=numnearest' check above. */
+             shows, there were not enough neighbors. Normally, this loop
+             should only be exited through the 'currentnum>=numnearest'
+             check above. */
           if(sQ==NULL)
-            error(EXIT_FAILURE, 0, "%s: only %zu neighbors found while "
-                  "you had asked to use %zu neighbors for outlier "
-                  "rejection (value to '%s')", __func__, ngb_counter,
-                  prm->numneighbors, prm->optionname);
+            {
+              /* In case we have less than the minimum number of acceptable
+                 neighbors, then we'll set the ngb_counter to zero, so the
+                 measure is set to NaN later.  */
+              if(ngb_counter<prm->minngb) ngb_counter=0;
+
+              /* Free any existing 'lQ' and stop searching. */
+              if(lQ) gal_list_dosizet_free(lQ);
+              break;
+            }
         }
 
-      /* Calculate the desired statistic, and write it in the output. */
+      /* Calculate the desired statistic on each of the inputs, and write
+         it in the output. */
       for(tnear=nearest; tnear!=NULL; tnear=tnear->next)
         {
-          /* First, reset the sorting flags (which remain from the last
-             time). */
-          tnear->flag &= ~(GAL_DATA_FLAG_SORT_CH | GAL_DATA_FLAG_BLANK_CH);
+          if(ngb_counter)
+            {
+              /* Reset the sorting flags (which remain from the previous
+                 iteration) and set the size parameters. */
+              tnear->dsize[0]=tnear->size=ngb_counter;
+              tnear->flag &= ~(   GAL_DATA_FLAG_SORT_CH
+                                | GAL_DATA_FLAG_BLANK_CH);
 
-          /* For a check on the values.
-          { size_t i; float *f=tnear->array;
-            for(i=0;i<tnear->size;++i) printf("%f\n", f[i]); } */
+              /* For a check on the values.
+                 { size_t i; float *f=tnear->array; float *I=input->array;
+                 printf("\n\n%f:\n", I[fullind]);
+                 for(i=0;i<tnear->size;++i) printf("\t%f\n", f[i]);
+                 }*/
 
-          /* Sort the elements, then find the difference between the
-             maximium and the value that is just after the minimum. We are
-             doing this because the scatter in the minimum can be large. */
-          tnarr=tnear->array;
-          gal_statistics_sort_increasing(tnear);
-          marr[fullind] = tnarr[tnear->size-1]-tnarr[1];
+              /* Sort the elements, then find the difference between the
+                 maximium and the value that is just after the minimum. We
+                 are doing this because the scatter in the minimum can be
+                 large. */
+              tnarr=tnear->array;
+              gal_statistics_sort_increasing(tnear);
+              marr[fullind] = tnarr[tnear->size-1]-tnarr[1];
+            }
+
+          /* A sufficient number of tiles were not found. */
+          else marr[fullind]=NAN;
         }
     }
 
@@ -538,26 +557,29 @@ gal_tileinternal_no_outlier_local_on_thread(void *in_prm)
 
 
 
-void
+size_t
 gal_tileinternal_no_outlier_local(gal_data_t *input, gal_data_t *second,
                                   gal_data_t *third,
                                   struct gal_tile_two_layer_params *tl,
-                                  uint8_t metric, size_t numneighbors,
+                                  uint8_t metric, size_t *numngbs,
                                   size_t numthreads, double *outliersclip,
                                   double outliersigma, char *filename,
                                   char *optionname)
 {
+  size_t out=0;
   gal_data_t *othresh;
+  size_t owindow, ngbvnum;
   float *base, *f, *ff, thresh;
   struct tileinternal_outlier_local prm;
-  size_t owindow, ngbvnum=numthreads*numneighbors;
   int permute=(tl && tl->totchannels>1 && tl->workoverch);
 
 
   /* Sanity checks. */
-  if(numneighbors<=3)
-    error(EXIT_FAILURE, 0, "%s has to be larger than 3, but "
-          "is currently %zu", optionname, numneighbors);
+  if(numngbs[0]>numngbs[1])
+    error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s to fix "
+          "the problem. The first value within the input 'numngbs' "\
+          "argument (%zu) is larger than the second (%zu)", __func__,
+          PACKAGE_BUGREPORT, numngbs[0], numngbs[1]);
   if(input->type!=GAL_TYPE_FLOAT32)
     error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s to fix "
           "the problem. The input to this function (not NoiseChisel) "
@@ -590,7 +612,8 @@ gal_tileinternal_no_outlier_local(gal_data_t *input, gal_data_t *second,
   prm.ngb_vals     = NULL;
   prm.input        = input;
   prm.optionname   = optionname;
-  prm.numneighbors = numneighbors;
+  prm.minngb       = numngbs[0];
+  prm.maxngb       = numngbs[1];
 
 
   /* Set the distance metric. */
@@ -630,6 +653,7 @@ gal_tileinternal_no_outlier_local(gal_data_t *input, gal_data_t *second,
      after a check of 'aslinkedlist' is that the 'input' might have a
      'next' element, but the caller might not have called
      'aslinkedlist'. */
+  ngbvnum=numthreads*prm.maxngb;
   prm.measure=gal_data_alloc(NULL, GAL_TYPE_FLOAT32, input->ndim,
                              input->dsize, input->wcs, 0, input->minmapsize,
                              input->quietmmap, NULL, input->unit, NULL);
@@ -653,8 +677,7 @@ gal_tileinternal_no_outlier_local(gal_data_t *input, gal_data_t *second,
 
   /* Find the outliers in the distribution, we will start from the first
      third of the cases to find the first outlier. Note that this should
-     not be done in-place because we need the 'measure' arrray
-     afterwards. */
+     not be done in-place because we need the 'measure' array later. */
   owindow=(prm.measure->size - gal_blank_number(prm.measure, 1))/3;
   othresh=gal_statistics_outlier_bydistance(1, prm.measure, owindow,
                                             outliersigma, outliersclip[0],
@@ -671,6 +694,10 @@ gal_tileinternal_no_outlier_local(gal_data_t *input, gal_data_t *second,
       do { *f = isnan(*f) ? *f : (*base>thresh ? NAN : *f); ++base; }
       while(++f<ff);
     }
+  /* No outlier threshold could be found! Just count how many non-blank
+     elements we have to return. This allows the caller to decrease their
+     minimum value if they want to. */
+  else out=input->size-gal_blank_number(input, 0);
 
 
   /* For a check.
@@ -709,27 +736,14 @@ gal_tileinternal_no_outlier_local(gal_data_t *input, gal_data_t *second,
       input->name="VALUE1_NO_OUTLIER";
       gal_tile_full_values_write(input, tl, 1, filename, NULL, 0);
       input->name=NULL;
-      if(second)
-        {
-          second->name="VALUE2_NO_OUTLIER";
-          gal_tile_full_values_write(second, tl, 1, filename,
-                                     NULL, 0);
-          second->name=NULL;
-        }
-      if(third)
-        {
-          third->name="VALUE3_NO_OUTLIER";
-          gal_tile_full_values_write(third, tl, 1, filename,
-                                     NULL, 0);
-          third->name=NULL;
-        }
     }
 
 
   /* Clean up and return. */
+  gal_list_void_free(prm.ngb_vals, 1);
+  gal_data_free(prm.measure);
+  gal_data_free(prm.blanks);
   gal_data_free(othresh);
   free(prm.thread_flags);
-  gal_data_free(prm.blanks);
-  gal_data_free(prm.measure);
-  gal_list_void_free(prm.ngb_vals, 1);
+  return out;
 }

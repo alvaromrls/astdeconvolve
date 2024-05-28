@@ -136,8 +136,6 @@ ui_initialize_options(struct noisechiselparams *p,
         case GAL_OPTIONS_KEY_TILESIZE:
         case GAL_OPTIONS_KEY_MINMAPSIZE:
         case GAL_OPTIONS_KEY_NUMCHANNELS:
-        case GAL_OPTIONS_KEY_INTERPMETRIC:
-        case GAL_OPTIONS_KEY_INTERPNUMNGB:
         case GAL_OPTIONS_KEY_REMAINDERFRAC:
           cp->coptions[i].mandatory=GAL_OPTIONS_MANDATORY;
           break;
@@ -219,6 +217,43 @@ parse_opt(int key, char *arg, struct argp_state *state)
 /**************************************************************/
 /***************       Sanity Check         *******************/
 /**************************************************************/
+static void
+ui_check_only_options_ngbminmaxs(size_t *in, char *name, char *purpose)
+{
+  size_t i, tmp;
+
+  /* Some of these options are optional. */
+  if(in)
+    {
+      /* We only want two values. */
+      if(in[2]!=GAL_BLANK_SIZE_T)
+        {
+          for(i=0;in[i]!=GAL_BLANK_SIZE_T;++i); /* job is to count, nothing
+                                                   more! */
+          error(EXIT_FAILURE, 0, "'--%s' only accepts two values (the "
+                "minimum and maximum number of neighboring tiles to use "
+                "for %s), but you have given %zu values", name, purpose,
+                i);
+        }
+
+      /* Swap the values because 'gal_options_parse_sizes_reverse' will
+         reverse the order given by the user. */
+      tmp=in[0]; in[0]=in[1]; in[1]=tmp;
+
+      /* The minimum and maximum. */
+      if(in[0]>in[1])
+        error(EXIT_FAILURE, 0, "the first value to '--%s' (the "
+              "smallest number of neighbors to use for %s) must be "
+              "smaller than the second (the maximum number of "
+              "neighbors to use for %s), you have given '%zu,%zu'",
+              name, purpose, purpose, in[0], in[1]);
+    }
+}
+
+
+
+
+
 /* Check ONLY the options. When arguments are involved, do the check
    in 'ui_check_options_and_arguments'. */
 static void
@@ -273,6 +308,10 @@ ui_check_only_options(struct noisechiselparams *p)
               "HDU number (starting from zero), extension name, or any "
               "HDU identifier acceptable by CFITSIO", p->widekernelname);
     }
+
+  /* Min-max options. */
+  ui_check_only_options_ngbminmaxs(p->outliernumngb, "outliernumngb",
+                                   "rejecting outlier tiles");
 
   /* If the S/N quantile is less than 0.1 (an arbitrary small value), this
      is probably due to forgetting that this is the purity level

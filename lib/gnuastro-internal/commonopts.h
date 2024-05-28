@@ -185,46 +185,7 @@ struct argp_option gal_commonopts_options[] =
       GAL_OPTIONS_NOT_MANDATORY,
       GAL_OPTIONS_NOT_SET
     },
-    {
-      "interponlyblank",
-      GAL_OPTIONS_KEY_INTERPONLYBLANK,
-      0,
-      0,
-      "Only interpolate over the blank tiles.",
-      GAL_OPTIONS_GROUP_TESSELLATION,
-      &cp->interponlyblank,
-      GAL_OPTIONS_NO_ARG_TYPE,
-      GAL_OPTIONS_RANGE_0_OR_1,
-      GAL_OPTIONS_NOT_MANDATORY,
-      GAL_OPTIONS_NOT_SET
-    },
-    {
-      "interpmetric",
-      GAL_OPTIONS_KEY_INTERPMETRIC,
-      "STR",
-      0,
-      "Interpolation metric (radial, manhattan).",
-      GAL_OPTIONS_GROUP_TESSELLATION,
-      &cp->interpmetric,
-      GAL_TYPE_STRING,
-      GAL_OPTIONS_RANGE_ANY,
-      GAL_OPTIONS_NOT_MANDATORY,
-      GAL_OPTIONS_NOT_SET,
-      gal_options_read_interpmetric
-    },
-    {
-      "interpnumngb",
-      GAL_OPTIONS_KEY_INTERPNUMNGB,
-      "INT",
-      0,
-      "No. of neighbors to use for interpolation.",
-      GAL_OPTIONS_GROUP_TESSELLATION,
-      &cp->interpnumngb,
-      GAL_TYPE_SIZE_T,
-      GAL_OPTIONS_RANGE_GT_0,
-      GAL_OPTIONS_NOT_MANDATORY,
-      GAL_OPTIONS_NOT_SET
-    },
+
 
 
 

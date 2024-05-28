@@ -1483,6 +1483,24 @@ gal_options_parse_sizes_reverse(struct argp_option *option, char *arg,
 
 
 
+/* Convert the output of 'gal_options_parse_sizes_reverse' into a correctly
+   ordered list. */
+gal_list_sizet_t *
+gal_options_sizes_array_to_list(size_t *array)
+{
+  gal_list_sizet_t *list=NULL;
+  while(*array!=GAL_BLANK_SIZE_T)
+    {
+      gal_list_sizet_add(&list, *array);
+      ++array;
+    }
+  return list;
+}
+
+
+
+
+
 /* Parse options with values of a list of numbers. */
 void *
 gal_options_parse_csv_float64(struct argp_option *option, char *arg,

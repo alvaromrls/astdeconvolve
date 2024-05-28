@@ -279,9 +279,9 @@ threshold_interp_smooth(struct noisechiselparams *p, gal_data_t **first,
   /* Do the interpolation of both arrays. */
   (*first)->next = *second;
   if(third) (*second)->next = *third;
-  tmp=gal_interpolate_neighbors(*first, tl, cp->interpmetric,
-                                cp->interpnumngb, cp->numthreads,
-                                cp->interponlyblank, 1,
+  tmp=gal_interpolate_neighbors(*first, tl, p->interpmetric,
+                                p->interpnumngb, cp->numthreads,
+                                p->interponlyblank, 1,
                                 GAL_INTERPOLATE_NEIGHBORS_FUNC_MEDIAN);
   gal_data_free(*first);
   gal_data_free(*second);
@@ -579,6 +579,37 @@ threshold_good_error(size_t number, int before0_after1, size_t interpnumngb)
 
 
 
+static void
+threshold_quantilf_find_apply_outlier(struct noisechiselparams *p,
+                                      struct qthreshparams *qprm)
+{
+  char *msg;
+  struct gal_options_common_params *cp=&p->cp;
+
+  p->outlier_stat=gal_tileinternal_no_outlier_local(qprm->erode_th,
+                                                    qprm->noerode_th,
+                                                    qprm->expand_th,
+                                                    &cp->tl,
+                                                    p->interpmetric,
+                                                    p->outliernumngb,
+                                                    cp->numthreads,
+                                                    p->outliersclip,
+                                                    p->outliersigma,
+                                                    p->qthreshname,
+                                                    "--outliernumngb");
+  if(p->outlier_stat)
+    {
+      if( asprintf(&msg, "WARNING: no outlier rejection (set "
+                   "--outliernumngb=%zu).", p->outlier_stat)<0 )
+        error(EXIT_FAILURE, 0, "%s: asprintf allocation", __func__);
+      gal_timing_report(NULL, msg, 2);
+    }
+}
+
+
+
+
+
 void
 threshold_quantile_find_apply(struct noisechiselparams *p)
 {
@@ -651,34 +682,16 @@ threshold_quantile_find_apply(struct noisechiselparams *p)
   if(p->qthreshname)
     {
       qprm.erode_th->name="QTHRESH_ERODE";
-      qprm.noerode_th->name="QTHRESH_NOERODE";
       gal_tile_full_values_write(qprm.erode_th, tl,
                                  !p->ignoreblankintiles,
                                  p->qthreshname, NULL, 0);
-      gal_tile_full_values_write(qprm.noerode_th, tl,
-                                 !p->ignoreblankintiles,
-                                 p->qthreshname, NULL, 0);
-      qprm.erode_th->name=qprm.noerode_th->name=NULL;
-
-      if(qprm.expand_th)
-        {
-          qprm.expand_th->name="QTHRESH_EXPAND";
-          gal_tile_full_values_write(qprm.expand_th, tl,
-                                     !p->ignoreblankintiles,
-                                     p->qthreshname, NULL, 0);
-          qprm.expand_th->name=NULL;
-        }
+      qprm.erode_th->name=NULL;
     }
 
 
   /* Remove the outliers. */
   if(p->outliernumngb)
-    gal_tileinternal_no_outlier_local(qprm.erode_th, qprm.noerode_th,
-                                      qprm.expand_th, &cp->tl,
-                                      cp->interpmetric, p->outliernumngb,
-                                      cp->numthreads, p->outliersclip,
-                                      p->outliersigma, p->qthreshname,
-                                      "--outliernumngb");
+    threshold_quantilf_find_apply_outlier(p, &qprm);
 
 
   /* Use the no-outlier grid as a basis for later estimating the sky. To
@@ -696,8 +709,8 @@ threshold_quantile_find_apply(struct noisechiselparams *p)
      errors in parallel. */
   num=gal_statistics_number(qprm.erode_th);
   nval=((size_t *)(num->array))[0];
-  if( nval < cp->interpnumngb )
-    threshold_good_error(nval, 1, cp->interpnumngb);
+  if( nval < p->interpnumngb )
+    threshold_good_error(nval, 1, p->interpnumngb);
   gal_data_free(num);
 
 

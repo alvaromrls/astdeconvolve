@@ -219,10 +219,11 @@ struct argp_option program_options[] =
       "Num neighboring tiles to look for outlier.",
       UI_GROUP_DETECTION,
       &p->outliernumngb,
-      GAL_TYPE_SIZE_T,
+      GAL_TYPE_INVALID,
       GAL_OPTIONS_RANGE_GE_0,
       GAL_OPTIONS_MANDATORY,
-      GAL_OPTIONS_NOT_SET
+      GAL_OPTIONS_NOT_SET,
+      gal_options_parse_sizes_reverse
     },
     {
       "outliersclip",
@@ -248,6 +249,46 @@ struct argp_option program_options[] =
       &p->outliersigma,
       GAL_TYPE_FLOAT32,
       GAL_OPTIONS_RANGE_GE_0,
+      GAL_OPTIONS_MANDATORY,
+      GAL_OPTIONS_NOT_SET
+    },
+    {
+      "interponlyblank",
+      UI_KEY_INTERPONLYBLANK,
+      0,
+      0,
+      "Only interpolate over the blank tiles.",
+      GAL_OPTIONS_GROUP_TESSELLATION,
+      &p->interponlyblank,
+      GAL_OPTIONS_NO_ARG_TYPE,
+      GAL_OPTIONS_RANGE_0_OR_1,
+      GAL_OPTIONS_NOT_MANDATORY,
+      GAL_OPTIONS_NOT_SET
+    },
+    {
+      "interpmetric",
+      UI_KEY_INTERPMETRIC,
+      "STR",
+      0,
+      "Interpolation metric (radial, manhattan).",
+      GAL_OPTIONS_GROUP_TESSELLATION,
+      &p->interpmetric,
+      GAL_TYPE_STRING,
+      GAL_OPTIONS_RANGE_ANY,
+      GAL_OPTIONS_MANDATORY,
+      GAL_OPTIONS_NOT_SET,
+      gal_options_read_interpmetric
+    },
+    {
+      "interpnumngb",
+      UI_KEY_INTERPNUMNGB,
+      "INT",
+      0,
+      "No. of neighbors to use for interpolation.",
+      GAL_OPTIONS_GROUP_TESSELLATION,
+      &p->interpnumngb,
+      GAL_TYPE_SIZE_T,
+      GAL_OPTIONS_RANGE_GT_0,
       GAL_OPTIONS_MANDATORY,
       GAL_OPTIONS_NOT_SET
     },
