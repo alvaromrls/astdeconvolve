@@ -396,6 +396,43 @@ ui_read_quantile_range(struct argp_option *option, char *arg,
 /**************************************************************/
 /***************       Sanity Check         *******************/
 /**************************************************************/
+static void
+ui_check_only_options_ngbminmaxs(size_t *in, char *name, char *purpose)
+{
+  size_t i, tmp;
+
+  /* Some of these options are optional. */
+  if(in)
+    {
+      /* We only want two values. */
+      if(in[2]!=GAL_BLANK_SIZE_T)
+        {
+          for(i=0;in[i]!=GAL_BLANK_SIZE_T;++i); /* job is to count, nothing
+                                                   more! */
+          error(EXIT_FAILURE, 0, "'--%s' only accepts two values (the "
+                "minimum and maximum number of neighboring tiles to use "
+                "for %s), but you have given %zu values", name, purpose,
+                i);
+        }
+
+      /* Swap the values because 'gal_options_parse_sizes_reverse' will
+         reverse the order given by the user. */
+      tmp=in[0]; in[0]=in[1]; in[1]=tmp;
+
+      /* The minimum and maximum. */
+      if(in[0]>in[1])
+        error(EXIT_FAILURE, 0, "the first value to '--%s' (the "
+              "smallest number of neighbors to use for %s) must be "
+              "smaller than the second (the maximum number of "
+              "neighbors to use for %s), you have given '%zu,%zu'",
+              name, purpose, purpose, in[0], in[1]);
+    }
+}
+
+
+
+
+
 /* Check ONLY the options. When arguments are involved, do the check
    in 'ui_check_options_and_arguments'. */
 static void
@@ -446,10 +483,14 @@ ui_check_only_options(struct statisticsparams *p)
     {
       /* Mandatory options. */
       if( isnan(p->meanmedqdiff) || isnan(p->sclipparams[0])
-          || p->cp.interpmetric==0 || p->cp.interpnumngb==0 )
+          || p->interpmetric==0 || p->interpnumngb==0 )
         error(EXIT_FAILURE, 0, "'--meanmedqdiff', '--sclipparams', "
               "'--interpmetric' and '--interpnumngb' are mandatory when "
               "requesting Sky measurement ('--sky')");
+
+      /* Outlier number of neighbors check.*/
+      ui_check_only_options_ngbminmaxs(p->outliernumngb, "outliernumngb",
+                                       "rejecting outlier tiles");
 
       /* Make sure a reasonable value is given to '--meanmedqdiff'. */
       if(p->meanmedqdiff>0.5)

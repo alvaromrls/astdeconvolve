@@ -218,10 +218,21 @@ sky(struct statisticsparams *p)
     }
 
 
+  /* Check if the number of acceptable tiles is not zero. */
+  if(p->sky_t->size-gal_blank_number(p->sky_t, 1)==0)
+    error(EXIT_FAILURE, 0, "no tiles could be found to estimate the "
+          "sky value! Tips: 1) decrease '--tilesize' to check for "
+          "smaller (more numerous) regions within the image that are "
+          "not affected significantly by signal, or 2) increase "
+          "'--meanmedqdiff' (to allow tiles with more skewness/signal). "
+          "Recall that you can see all option values with the "
+          "'--printparams' ('-P') option");
+
+
   /* Remove outliers if requested. */
   if(p->outliernumngb)
     gal_tileinternal_no_outlier_local(p->sky_t, p->std_t, NULL, &cp->tl,
-                                      cp->interpmetric, p->outliernumngb,
+                                      p->interpmetric, p->outliernumngb,
                                       cp->numthreads, p->outliersclip,
                                       p->outliersigma, p->checkskyname,
                                       "--outliernumngb");
@@ -235,9 +246,9 @@ sky(struct statisticsparams *p)
   /* Interpolate the Sky and its standard deviation. */
   if(!cp->quiet) gettimeofday(&t1, NULL);
   p->sky_t->next=p->std_t;
-  tmp=gal_interpolate_neighbors(p->sky_t, tl, cp->interpmetric,
-                                cp->interpnumngb, cp->numthreads,
-                                cp->interponlyblank, 1,
+  tmp=gal_interpolate_neighbors(p->sky_t, tl, p->interpmetric,
+                                p->interpnumngb, cp->numthreads,
+                                p->interponlyblank, 1,
                                 GAL_INTERPOLATE_NEIGHBORS_FUNC_MEDIAN);
   gal_data_free(p->sky_t);
   gal_data_free(p->std_t);
@@ -301,6 +312,13 @@ sky(struct statisticsparams *p)
   p->sky_t->name = p->std_t->name = NULL;
   gal_fits_key_write_filename("input", p->inputname, &p->cp.ckeys, 1,
                               p->cp.quiet);
+  gal_fits_key_list_add_end(&p->cp.ckeys, GAL_TYPE_SIZE_T, "STATOUTL", 0,
+                            &p->outlier_stat, 0,
+                            p->outlier_stat
+                            ? "No outlier removal, give to "
+                              "'--outliernumngb'."
+                            : "Outlier removal successfully completed.",
+                            0, NULL, 0);
   gal_fits_key_write(p->cp.ckeys, outname, "0", "NONE", 1, 0);
   if(!cp->quiet)
     printf("  - Sky and its STD written to '%s'.\n", outname);

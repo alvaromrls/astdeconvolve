@@ -436,6 +436,7 @@ gal_tileinternal_no_outlier_local_on_thread(void *in_prm)
          farthest. */
       lQ=sQ=NULL;
       gal_list_dosizet_add(&lQ, &sQ, index, 0.0f);
+      flag[index] |= TILEINTERNAL_OUTLIER_FLAGS_NGB_CHECKED;
       while(sQ)
         {
           /* Pop-out (p) an index from the queue: */

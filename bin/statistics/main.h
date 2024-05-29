@@ -109,9 +109,12 @@ struct statisticsparams
   char         *kernelname;  /* File name of kernel to convolve input.   */
   char               *khdu;  /* Kernel HDU.                              */
   float       meanmedqdiff;  /* Mode and median quantile difference.     */
-  size_t     outliernumngb;  /* Number of neighbors to define outliers.  */
+  size_t    *outliernumngb;  /* Number of neighbors to define outliers.  */
   float       outliersigma;  /* Multiple of sigma to define outlier.     */
   double   outliersclip[2];  /* Outlier Sigma-clipping params.           */
+  uint8_t     interponlyblank; /* Only interpolate over blank values.    */
+  uint8_t        interpmetric; /* Metric to use for nearest-ngb interp.  */
+  size_t         interpnumngb; /* Number of neighbors for interpolation. */
   size_t       smoothwidth;  /* Width of flat kernel to smooth interpd.  */
   uint8_t         checksky;  /* Save the steps for deriving the Sky.     */
   uint8_t checkskynointerp;  /* Stop --checksky before interpolation.    */
@@ -138,6 +141,8 @@ struct statisticsparams
   uint8_t      fitrobustid;  /* ID of robust fit type.                   */
   gal_data_t    *fitestval;  /* Values to estimate over fit.             */
   int             fitwhtid;  /* Code for the nature of the weight column.*/
+
+  size_t         outlier_stat; /* Non-zero if outliers not removed.      */
 };
 
 #endif

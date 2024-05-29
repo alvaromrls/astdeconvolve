@@ -391,13 +391,13 @@ statistics_interpolate_and_write(struct statisticsparams *p,
 
   /* Do the interpolation (if necessary). */
   if( p->interpolate
-      && !(p->cp.interponlyblank && gal_blank_present(values, 1)==0) )
+      && !(p->interponlyblank && gal_blank_present(values, 1)==0) )
     {
       interpd=gal_interpolate_neighbors(values, &cp->tl,
-                              cp->interpmetric,
-                              cp->interpnumngb,
+                              p->interpmetric,
+                              p->interpnumngb,
                               cp->numthreads,
-                              cp->interponlyblank, 0,
+                              p->interponlyblank, 0,
                               GAL_INTERPOLATE_NEIGHBORS_FUNC_MEDIAN);
       gal_data_free(values);
       values=interpd;

@@ -302,11 +302,12 @@ ui_check_only_options(struct noisechiselparams *p)
     {
       /* If it is FITS, see if a HDU has been provided. */
       if( gal_fits_file_recognized(p->widekernelname) && p->whdu==NULL )
-        error(EXIT_FAILURE, 0, "no HDU specified for the given wide kernel "
-              "('%s'). When the wide kernel is a FITS file, a HDU must also "
-              "be specified. You can use the '--whdu' option and give it the "
-              "HDU number (starting from zero), extension name, or any "
-              "HDU identifier acceptable by CFITSIO", p->widekernelname);
+        error(EXIT_FAILURE, 0, "no HDU specified for the given wide "
+              "kernel ('%s'). When the wide kernel is a FITS file, a "
+              "HDU must also be specified. You can use the '--whdu' "
+              "option and give it the HDU number (starting from zero), "
+              "extension name, or any HDU identifier acceptable by "
+              "CFITSIO", p->widekernelname);
     }
 
   /* Min-max options. */

@@ -87,9 +87,9 @@ outdir=~/tmp
 # the script, you have to add a line under the line below
 #    'if [ -f "$utility" ]; then rm "$utility"; fi'
 # that will delete that particular program.
-utilname=noisechisel
+utilname=statistics
 arguments=hst.fits
-options="--tilesize=200,200 --meanmedqdiff=0.2 --outliernumngb=5,50"
+options="--tilesize=200,200 --meanmedqdiff=0.15 --sky --checksky"
 
 
 

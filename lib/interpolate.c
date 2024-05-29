@@ -145,7 +145,6 @@ interpolate_neighbors_on_thread(void *in_prm)
       /* For easy reading. */
       fullind=tprm->indexs[i];
 
-
       /* If the caller only wanted to interpolate over blank values and
          this value is not blank (we know from the flags), then just set
          the output value at this element to the input value and go to the
@@ -204,6 +203,7 @@ interpolate_neighbors_on_thread(void *in_prm)
          farthest. */
       lQ=sQ=NULL;
       gal_list_dosizet_add(&lQ, &sQ, index, 0.0f);
+      flag[index] |= INTERPOLATE_FLAGS_NGB_CHECKED;
       while(sQ)
         {
           /* Pop-out (p) an index from the queue: */
@@ -288,16 +288,16 @@ interpolate_neighbors_on_thread(void *in_prm)
                   value=gal_statistics_maximum(tnear); break;
                   break;
                 case GAL_INTERPOLATE_NEIGHBORS_FUNC_MEAN:
-                  value=gal_statistics_mean(tnear); /* Out can be a diff. type */
+                  value=gal_statistics_mean(tnear); /* can be a diff. type */
                   value=gal_data_copy_to_new_type_free(value, tnear->type);
                   break;
                 case GAL_INTERPOLATE_NEIGHBORS_FUNC_MEDIAN:
                   value=gal_statistics_median(tnear, 1); break;
                 default:
-                  error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s "
-                        "to fix the problem. The value %d is not a recognized "
-                        "interpolation function identifier", __func__,
-                        PACKAGE_BUGREPORT, prm->function);
+                  error(EXIT_FAILURE, 0, "%s: a bug! Please contact us "
+                        "at %s to fix the problem. The value %d is not "
+                        "a recognized interpolation function identifier",
+                        __func__, PACKAGE_BUGREPORT, prm->function);
                 }
               memcpy(gal_pointer_increment(tout->array, fullind, tout->type),
                      value->array, gal_type_sizeof(tout->type));
