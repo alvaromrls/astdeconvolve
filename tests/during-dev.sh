@@ -88,8 +88,9 @@ outdir=~/tmp
 #    'if [ -f "$utility" ]; then rm "$utility"; fi'
 # that will delete that particular program.
 utilname=noisechisel
-arguments=nir2.fits
-options="--checkqthresh"
+arguments="nir2.fits --convolved=nir2-conv.fits"
+arguments=sdss.fits
+options="--checkqthresh --tilesize=50,50"
 
 
 

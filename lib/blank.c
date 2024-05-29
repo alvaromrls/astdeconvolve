@@ -1147,7 +1147,7 @@ blank_flag_remove_dim0(gal_data_t *input, gal_data_t *flag)
       do if(*a==*a) { ++num; *o++=*a; } while(++a<af);                  \
   }
 void
-gal_blank_remove(gal_data_t *input)
+gal_blank_remove(gal_data_t *input, int free_if_all_blank)
 {
   char **strarr;
   size_t i, num=0;
@@ -1193,7 +1193,8 @@ gal_blank_remove(gal_data_t *input)
   input->dsize[0]=input->size=num;
 
   /* When there are no non-blank elements, free the array. */
-  if(num==0 && input->array) { free(input->array); input->array=NULL; }
+  if(free_if_all_blank && num==0 && input->array)
+    { free(input->array); input->array=NULL; }
 
   /* Set the flags to mark that there is no blanks. */
   input->flag |=  GAL_DATA_FLAG_BLANK_CH;
@@ -1210,7 +1211,7 @@ void
 gal_blank_remove_realloc(gal_data_t *input)
 {
   /* Remove the blanks and fix the size of the dataset. */
-  gal_blank_remove(input);
+  gal_blank_remove(input, 0);
 
   /* Run realloc to shrink the allocated space. */
   input->array=realloc(input->array,

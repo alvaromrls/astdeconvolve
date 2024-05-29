@@ -57,6 +57,7 @@ struct noisechiselparams
   uint8_t               label;  /* Label detections that are connected.   */
 
   float          meanmedqdiff;  /* Difference between mode and median.    */
+  gal_data_t   *concentration;  /* Concentration of signal in the center. */
   float               qthresh;  /* Quantile threshold on convolved image. */
   size_t       *outliernumngb;  /* Number of neighbors to define outliers.*/
   float          outliersigma;  /* Multiple of sigma to define outlier.   */

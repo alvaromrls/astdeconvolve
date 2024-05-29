@@ -1749,7 +1749,7 @@ gal_statistics_no_blank_sorted(gal_data_t *input, int inplace)
           /* See if we should allocate a new dataset to remove blanks or if
              we can use the actual contiguous patch of memory. */
           noblank = inplace ? contig : gal_data_copy(contig);
-          gal_blank_remove(noblank);
+          gal_blank_remove(noblank, 0);
         }
       else noblank=contig;
 
@@ -2438,7 +2438,7 @@ gal_statistics_concentration(gal_data_t *input, double q_width,
      32-bit floats cannot fully preserve the integer differences, it should
      not make any statistical significance, but it makes a large difference
      in RAM and CPU usage.*/
-  if(input->type!=GAL_TYPE_FLOAT32 || input->type!=GAL_TYPE_FLOAT64)
+  if(input->type!=GAL_TYPE_FLOAT32 && input->type!=GAL_TYPE_FLOAT64)
     {
       if(nbs==input) /* Was in-place. */
         nbs=gal_data_copy_to_new_type(nbs, GAL_TYPE_FLOAT32);
