@@ -92,12 +92,12 @@ interpolate_neighbors_on_thread(void *in_prm)
   gal_data_t *input=prm->input;
 
   /* Rest of variables. */
-  void *nv;
   float dist, pdist;
   uint8_t *b, *bf, *bb;
   gal_list_void_t *tvll;
   size_t ngb_counter, pind;
   gal_list_dosizet_t *lQ, *sQ;
+  void *nv, *blank=gal_blank_alloc_write(input->type);
   size_t i, index, fullind, chstart=0, ndim=input->ndim;
   gal_data_t *tin, *tout, *tnear, *value=NULL, *nearest=NULL;
   size_t size = (correct_index ? tl->tottilesinch : input->size);
@@ -258,50 +258,59 @@ interpolate_neighbors_on_thread(void *in_prm)
                }
            } );
 
-          /* If there are no more meshes to add to the queue, then this
-             shows, there were not enough points for
-             interpolation. Normally, this loop should only be exited
+          /* If there are no more meshes to add to the queue, then we have
+             not reached the maximum number of points to use for
+             interpolation. Normally (when we have more than the maximum
+             number of nearby neighbors), this loop should be 'broken'
              through the 'currentnum>=numnearest' check above. */
-          if(sQ==NULL)
-            error(EXIT_FAILURE, 0, "%s: only %zu neighbors found while "
-                  "you had asked to use %zu neighbors for close neighbor "
-                  "interpolation", __func__, ngb_counter,
-                  prm->numneighbors);
+          if(sQ==NULL) { if(lQ) gal_list_dosizet_free(lQ); break; }
         }
 
       /* Calculate the desired statistic, and write it in the output. */
       tout=prm->out;
       for(tnear=nearest; tnear!=NULL; tnear=tnear->next)
         {
-          /* Find the desired statistic and copy it, but first, reset the
-             flags (which remain from the last time). */
-          tnear->flag &= ~(GAL_DATA_FLAG_SORT_CH | GAL_DATA_FLAG_BLANK_CH);
-          switch(prm->function)
+          /* There were neighbors to use for interpolation. */
+          if(ngb_counter)
             {
-            case GAL_INTERPOLATE_NEIGHBORS_FUNC_MIN:
-              value=gal_statistics_minimum(tnear); break;
-              break;
-            case GAL_INTERPOLATE_NEIGHBORS_FUNC_MAX:
-              value=gal_statistics_maximum(tnear); break;
-              break;
-            case GAL_INTERPOLATE_NEIGHBORS_FUNC_MEAN:
-              value=gal_statistics_mean(tnear); /* Out can be a diff. type */
-              value=gal_data_copy_to_new_type_free(value, tnear->type);
-              break;
-            case GAL_INTERPOLATE_NEIGHBORS_FUNC_MEDIAN:
-              value=gal_statistics_median(tnear, 1); break;
-            default:
-              error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s "
-                    "to fix the problem. The value %d is not a recognized "
-                    "interpolation function identifier", __func__,
-                    PACKAGE_BUGREPORT, prm->function);
-            }
-          memcpy(gal_pointer_increment(tout->array, fullind, tout->type),
-                 value->array, gal_type_sizeof(tout->type));
+              /* Find the desired statistic and copy it, but first, reset
+                 the flags (which remain from the last time). */
+              tnear->dsize[0]=tnear->size=ngb_counter;
+              tnear->flag &= ~(GAL_DATA_FLAG_SORT_CH | GAL_DATA_FLAG_BLANK_CH);
 
-          /* Clean up and go to next array. */
-          gal_data_free(value);
-          tout=tout->next;
+              /* Do the operation. */
+              switch(prm->function)
+                {
+                case GAL_INTERPOLATE_NEIGHBORS_FUNC_MIN:
+                  value=gal_statistics_minimum(tnear); break;
+                  break;
+                case GAL_INTERPOLATE_NEIGHBORS_FUNC_MAX:
+                  value=gal_statistics_maximum(tnear); break;
+                  break;
+                case GAL_INTERPOLATE_NEIGHBORS_FUNC_MEAN:
+                  value=gal_statistics_mean(tnear); /* Out can be a diff. type */
+                  value=gal_data_copy_to_new_type_free(value, tnear->type);
+                  break;
+                case GAL_INTERPOLATE_NEIGHBORS_FUNC_MEDIAN:
+                  value=gal_statistics_median(tnear, 1); break;
+                default:
+                  error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s "
+                        "to fix the problem. The value %d is not a recognized "
+                        "interpolation function identifier", __func__,
+                        PACKAGE_BUGREPORT, prm->function);
+                }
+              memcpy(gal_pointer_increment(tout->array, fullind, tout->type),
+                     value->array, gal_type_sizeof(tout->type));
+
+              /* Clean up and go to next array. */
+              gal_data_free(value);
+              tout=tout->next;
+            }
+
+          /* There were no neighbors! */
+          else
+            memcpy(gal_pointer_increment(tout->array, fullind, tout->type),
+                   blank, gal_type_sizeof(tout->type));
         }
     }
 

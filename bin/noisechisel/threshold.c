@@ -519,112 +519,11 @@ qthresh_on_tile(void *in_prm)
 
 
 static void
-threshold_good_error(size_t number, int before0_after1, size_t interpnumngb)
+threshold_quantilf_prepare(struct noisechiselparams *p,
+                           struct qthreshparams *qprm)
 {
-  before0_after1=1;
-
-  /* Set the differing strings. */
-  char *in1 = ( before0_after1
-                ? "after removing outliers"
-                : "for defining a quantile threshold" );
-  char *in2 = ( before0_after1
-                ? ""
-                : "NOTE that this is happening *BEFORE* outlier rejection "
-                  "(where the number may decrease even further).");
-  char *in3 = ( before0_after1
-                ? "\n"
-                  "  - (slightly) Decrease '--outliernumngb' to use less "
-                  "tiles to find outliers.\n"
-                  "  - (slightly) Increase '--outliersclip' to reject less "
-                  "as outliers.\n"
-                  "  - (slightly) Increase '--outliersigma' to reject less "
-                  "as outliers.\n"
-                : "\n");
-
-  /* Print the error message and abort. */
-  error(EXIT_FAILURE, 0, "%zu tiles usable %s!\n\n"
-
-        "This is smaller than the requested minimum value of %zu (value to "
-        "the '--interpnumngb' option). %s\n\n"
-
-        "There are several ways to address the problem. The best and most "
-        "highly recommended is to use a larger input if possible (when the "
-        "input is a crop from a larger dataset). If this is not the case, "
-        "or it doesn't solve the problem, you need to loosen the "
-        "parameters mentioned below in the respective order (and therefore "
-        "cause scatter/inaccuracy in the final result). Hence its best to "
-        "not loosen them too much (recall that you can see all the option "
-        "values to Gnuastro's programs by appending '-P' to the end of your "
-        "command).\n"
-        "  - (slightly) Decrease '--tilesize' so your tile-grid has more "
-        "tiles.\n"
-        "  - (slightly) Increase '--meanmedqdiff' to accept more tiles.%s"
-        "  - (slightly) Decrease '--interpnumngb' to be less than %zu.\n\n"
-
-        "---- Tip ----\n"
-        "Append your command with '--checkqthresh' to see the "
-        "successful tiles in relation with this dataset's contents "
-        "before this crash. A visual inspection will greatly help in "
-        "finding the cause/solution for this particular dataset (note "
-        "that the output of '--checkqthresh' is a multi-extension FITS "
-        "file).\n\n"
-        "To better understand this important step, please run the "
-        "following command (press 'SPACE'/arrow-keys to navigate and "
-        "'Q' to return back to the command-line):\n\n"
-        "    $ info gnuastro \"Quantifying signal in a tile\"\n", number,
-        in1, interpnumngb, in2, in3, number);
-}
-
-
-
-
-
-static void
-threshold_quantilf_find_apply_outlier(struct noisechiselparams *p,
-                                      struct qthreshparams *qprm)
-{
-  char *msg;
-  struct gal_options_common_params *cp=&p->cp;
-
-  p->outlier_stat=gal_tileinternal_no_outlier_local(qprm->erode_th,
-                                                    qprm->noerode_th,
-                                                    qprm->expand_th,
-                                                    &cp->tl,
-                                                    p->interpmetric,
-                                                    p->outliernumngb,
-                                                    cp->numthreads,
-                                                    p->outliersclip,
-                                                    p->outliersigma,
-                                                    p->qthreshname,
-                                                    "--outliernumngb");
-  if(p->outlier_stat)
-    {
-      if( asprintf(&msg, "WARNING: no outlier rejection (set "
-                   "--outliernumngb=%zu).", p->outlier_stat)<0 )
-        error(EXIT_FAILURE, 0, "%s: asprintf allocation", __func__);
-      gal_timing_report(NULL, msg, 2);
-    }
-}
-
-
-
-
-
-void
-threshold_quantile_find_apply(struct noisechiselparams *p)
-{
-  char *msg;
-  size_t nval;
-  gal_data_t *num;
-  struct timeval t1;
-  struct qthreshparams qprm;
   struct gal_options_common_params *cp=&p->cp;
   struct gal_tile_two_layer_params *tl=&cp->tl;
-
-
-  /* Get the starting time if necessary. */
-  if(!p->cp.quiet) gettimeofday(&t1, NULL);
-
 
   /* Add image to check image if requested. If the user has asked for
      'oneelempertile', then the size of values is not going to be the same
@@ -641,89 +540,168 @@ threshold_quantile_find_apply(struct noisechiselparams *p)
 
 
   /* Allocate space for the quantile threshold values. */
-  qprm.erode_th=gal_data_alloc(NULL, p->input->type, p->input->ndim,
-                               tl->numtiles, NULL, 0, cp->minmapsize,
-                               p->cp.quietmmap, NULL, p->input->unit,
-                               NULL);
-  qprm.noerode_th=gal_data_alloc(NULL, p->input->type, p->input->ndim,
-                                 tl->numtiles, NULL, 0, cp->minmapsize,
-                                 p->cp.quietmmap, NULL, p->input->unit,
-                                 NULL);
-  qprm.expand_th = ( p->detgrowquant!=1.0f
-                     ? gal_data_alloc(NULL, p->input->type, p->input->ndim,
-                                      tl->numtiles, NULL, 0, cp->minmapsize,
-                                      p->cp.quietmmap, NULL, p->input->unit,
-                                      NULL)
-                     : NULL );
+  qprm->p=p;
+  qprm->erode_th=gal_data_alloc(NULL, p->input->type, p->input->ndim,
+                                tl->numtiles, NULL, 0, cp->minmapsize,
+                                p->cp.quietmmap, NULL, p->input->unit,
+                                NULL);
+  qprm->noerode_th=gal_data_alloc(NULL, p->input->type, p->input->ndim,
+                                  tl->numtiles, NULL, 0, cp->minmapsize,
+                                  p->cp.quietmmap, NULL, p->input->unit,
+                                  NULL);
+  qprm->expand_th = ( p->detgrowquant!=1.0f
+                      ? gal_data_alloc(NULL, p->input->type, p->input->ndim,
+                                       tl->numtiles, NULL, 0, cp->minmapsize,
+                                       p->cp.quietmmap, NULL, p->input->unit,
+                                       NULL)
+                      : NULL );
 
 
   /* Allocate temporary space for processing in each tile. */
-  qprm.usage=gal_pointer_allocate(p->input->type,
+  qprm->usage=gal_pointer_allocate(p->input->type,
                                   cp->numthreads * p->maxtcontig, 0,
                                   __func__, "qprm.usage");
 
+}
 
-  /* Find the threshold on each tile, free the temporary processing space
-     and set the blank flag on both. Since they have the same blank
-     elements, it is only necessary to check one (with the 'updateflag'
-     value set to 1), then update the next. */
-  qprm.p=p;
-  gal_threads_spin_off(qthresh_on_tile, &qprm, tl->tottiles,
+
+
+
+
+/* Find the threshold on each tile, free the temporary processing space and
+   set the blank flag on both. Since they have the same blank elements, it
+   is only necessary to check one (with the 'updateflag' value set to 1),
+   then update the next. */
+static void
+threshold_quantilf_find_tiles(struct noisechiselparams *p,
+                              struct qthreshparams *qprm)
+{
+  struct gal_options_common_params *cp=&p->cp;
+  struct gal_tile_two_layer_params *tl=&cp->tl;
+
+  /* Find the good tiles. */
+  gal_threads_spin_off(qthresh_on_tile, qprm, tl->tottiles,
                        cp->numthreads, cp->minmapsize,
                        cp->quietmmap);
-  free(qprm.usage);
-  if( gal_blank_present(qprm.erode_th, 1) )
+  free(qprm->usage);
+
+  /* Check if the number of acceptable tiles is not zero. */
+  if(qprm->erode_th->size-gal_blank_number(qprm->erode_th, 1)==0)
+    error(EXIT_FAILURE, 0, "no tiles could be found to estimate the "
+          "quantile threshold! Tips: 1) decrease '--tilesize' to "
+          "check for smaller (more numerous) regions within the image "
+          "that are not affected significantly by signal, or 2) "
+          "increase '--meanmedqdiff' (to allow tiles with more "
+          "skewness/signal). Recall that you can see all option "
+          "values with the '--printparams' ('-P') option");
+
+  /* Set the flags accordingly.  */
+  if( gal_blank_present(qprm->erode_th, 1) )
     {
-      qprm.noerode_th->flag |= GAL_DATA_FLAG_HASBLANK;
-      if(qprm.expand_th) qprm.expand_th->flag  |= GAL_DATA_FLAG_HASBLANK;
+      qprm->noerode_th->flag |= GAL_DATA_FLAG_HASBLANK;
+      if(qprm->expand_th) qprm->expand_th->flag  |= GAL_DATA_FLAG_HASBLANK;
     }
-  qprm.noerode_th->flag |= GAL_DATA_FLAG_BLANK_CH;
-  if(qprm.expand_th) qprm.expand_th->flag  |= GAL_DATA_FLAG_BLANK_CH;
+  qprm->noerode_th->flag |= GAL_DATA_FLAG_BLANK_CH;
+  if(qprm->expand_th) qprm->expand_th->flag  |= GAL_DATA_FLAG_BLANK_CH;
+
+  /* Generate the check image if requested. */
   if(p->qthreshname)
     {
-      qprm.erode_th->name="QTHRESH_ERODE";
-      gal_tile_full_values_write(qprm.erode_th, tl,
+      qprm->erode_th->name="QTHRESH_ERODE";
+      gal_tile_full_values_write(qprm->erode_th, tl,
                                  !p->ignoreblankintiles,
                                  p->qthreshname, NULL, 0);
-      qprm.erode_th->name=NULL;
+      qprm->erode_th->name=NULL;
     }
+}
 
 
-  /* Remove the outliers. */
-  if(p->outliernumngb)
-    threshold_quantilf_find_apply_outlier(p, &qprm);
 
 
+
+static void
+threshold_quantilf_find_apply_outlier(struct noisechiselparams *p,
+                                      struct qthreshparams *qprm)
+{
+  char *msg;
+  struct gal_options_common_params *cp=&p->cp;
+
+  /* Reject outliers. */
+  p->outlier_stat=gal_tileinternal_no_outlier_local(qprm->erode_th,
+                                                    qprm->noerode_th,
+                                                    qprm->expand_th,
+                                                    &cp->tl,
+                                                    p->interpmetric,
+                                                    p->outliernumngb,
+                                                    cp->numthreads,
+                                                    p->outliersclip,
+                                                    p->outliersigma,
+                                                    p->qthreshname,
+                                                    "--outliernumngb");
+
+  /* If outliers were not removed inform the user. */
+  if(p->outlier_stat)
+    {
+      if( asprintf(&msg, "WARNING: no outlier rejection (set "
+                   "--outliernumngb=%zu).", p->outlier_stat)<0 )
+        error(EXIT_FAILURE, 0, "%s: asprintf allocation", __func__);
+      gal_timing_report(NULL, msg, 2);
+    }
+}
+
+
+
+
+
+static void
+threshold_quantilf_interpolate(struct noisechiselparams *p,
+                               struct qthreshparams *qprm)
+{
   /* Use the no-outlier grid as a basis for later estimating the sky. To
      see this array on the image, use 'gal_tile_full_values_write'. */
-  p->noskytiles=gal_blank_flag(qprm.erode_th);
+  p->noskytiles=gal_blank_flag(qprm->erode_th);
   /* For a check:
   gal_tile_full_values_write(p->noskytiles, &cp->tl, 1,
                              "noskytiles.fits", NULL, NULL);
   */
 
-
-  /* Check if the number of acceptable tiles is more than the minimum
-     interpolated number. Since this is a common problem for users, it is
-     much more useful to do the check here rather than printing multiple
-     errors in parallel. */
-  num=gal_statistics_number(qprm.erode_th);
-  nval=((size_t *)(num->array))[0];
-  if( nval < p->interpnumngb )
-    threshold_good_error(nval, 1, p->interpnumngb);
-  gal_data_free(num);
-
-
   /* Interpolate and smooth the derived values. */
-  threshold_interp_smooth(p, &qprm.erode_th, &qprm.noerode_th,
-                          qprm.expand_th ? &qprm.expand_th : NULL,
+  threshold_interp_smooth(p, &qprm->erode_th, &qprm->noerode_th,
+                          qprm->expand_th ? &qprm->expand_th : NULL,
                           p->qthreshname);
+}
 
+
+
+
+void
+threshold_quantile_find_apply(struct noisechiselparams *p)
+{
+  char *msg;
+  struct timeval t1;
+  struct qthreshparams qprm;
+  struct gal_options_common_params *cp=&p->cp;
+  struct gal_tile_two_layer_params *tl=&cp->tl;
+
+  /* Get the starting time if necessary. */
+  if(!p->cp.quiet) gettimeofday(&t1, NULL);
+
+  /* Allocate necessary datasets. */
+  threshold_quantilf_prepare(p, &qprm);
+
+  /* Find the good tiles. */
+  threshold_quantilf_find_tiles(p, &qprm);
+
+  /* Remove outliers. */
+  if(p->outliernumngb)
+    threshold_quantilf_find_apply_outlier(p, &qprm);
+
+  /* Interpolate to fill the grid. */
+  threshold_quantilf_interpolate(p, &qprm);
 
   /* We now have a threshold for all tiles, apply it. */
   threshold_apply(p, qprm.erode_th->array, qprm.noerode_th->array,
                   THRESHOLD_QUANTILES);
-
 
   /* Write the binary image if check is requested. */
   if(p->qthreshname && !tl->oneelempertile)
@@ -733,10 +711,8 @@ threshold_quantile_find_apply(struct noisechiselparams *p)
       p->binary->name=NULL;
     }
 
-
   /* Set the expansion quantile if necessary. */
   p->expand_thresh = qprm.expand_th ? qprm.expand_th : NULL;
-
 
   /* Clean up and report duration if necessary. */
   gal_data_free(qprm.erode_th);
@@ -749,7 +725,6 @@ threshold_quantile_find_apply(struct noisechiselparams *p)
       gal_timing_report(&t1, msg, 2);
       free(msg);
     }
-
 
   /* If the user wanted to check the threshold and hasn't called
      'continueaftercheck', then stop NoiseChisel. */

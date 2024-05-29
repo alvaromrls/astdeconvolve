@@ -88,8 +88,8 @@ outdir=~/tmp
 #    'if [ -f "$utility" ]; then rm "$utility"; fi'
 # that will delete that particular program.
 utilname=noisechisel
-arguments=sdss.fits
-options="--outliernumngb=5000000,500000000"
+arguments=hst.fits
+options="--tilesize=200,200 --meanmedqdiff=0.2 --outliernumngb=5,50"
 
 
 

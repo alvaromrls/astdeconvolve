@@ -151,8 +151,10 @@ noisechisel_output(struct noisechiselparams *p)
   gal_fits_key_list_add_end(&p->cp.ckeys, GAL_TYPE_SIZE_T, "STATOUTL", 0,
                             &p->outlier_stat, 0,
                             p->outlier_stat
-                            ? "No outlier removal, give to '--outliernumngb'."
-                            : "Outlier removal as expected", 0, NULL, 0);
+                            ? "No outlier removal, give to "
+                              "'--outliernumngb'."
+                            : "Outlier removal successfully completed.",
+                            0, NULL, 0);
   gal_fits_key_write(p->cp.ckeys, p->cp.output, "0", "NONE", 1, 1);
 
 
