@@ -276,7 +276,8 @@ interpolate_neighbors_on_thread(void *in_prm)
               /* Find the desired statistic and copy it, but first, reset
                  the flags (which remain from the last time). */
               tnear->dsize[0]=tnear->size=ngb_counter;
-              tnear->flag &= ~(GAL_DATA_FLAG_SORT_CH | GAL_DATA_FLAG_BLANK_CH);
+              tnear->flag &= ~(   GAL_DATA_FLAG_SORT_CH
+                                | GAL_DATA_FLAG_BLANK_CH );
 
               /* Do the operation. */
               switch(prm->function)
@@ -795,8 +796,8 @@ gal_interpolate_1d_blank(gal_data_t *in, int type_1d)
       }
       */
 
-      /* Set the blank flags, note that 'GAL_DATA_FLAG_BLANK_CH' is already set
-         by the top call to 'gal_blank_present'. */
+      /* Set the blank flags, note that 'GAL_DATA_FLAG_BLANK_CH' is already
+         set by the top call to 'gal_blank_present'. */
       if(hasblank)
         in->flag |=  GAL_DATA_FLAG_HASBLANK;
       else

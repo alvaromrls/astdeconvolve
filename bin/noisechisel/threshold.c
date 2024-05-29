@@ -297,17 +297,9 @@ threshold_interp_smooth(struct noisechiselparams *p, gal_data_t **first,
   if(filename)
     {
       (*first)->name="THRESH1_INTERP";
-      (*second)->name="THRESH2_INTERP";
-      if(third) (*third)->name="THRESH3_INTERP";
       gal_tile_full_values_write(*first, tl, !p->ignoreblankintiles,
                                  filename, NULL, 0);
-      gal_tile_full_values_write(*second, tl, !p->ignoreblankintiles,
-                                 filename, NULL, 0);
-      if(third)
-        gal_tile_full_values_write(*third, tl, !p->ignoreblankintiles,
-                                   filename, NULL, 0);
-      (*first)->name = (*second)->name = NULL;
-      if(third) (*third)->name=NULL;
+      (*first)->name=NULL;
     }
 
   /* Smooth the threshold if requested. */
@@ -338,17 +330,9 @@ threshold_interp_smooth(struct noisechiselparams *p, gal_data_t **first,
       if(filename)
         {
           (*first)->name="THRESH1_SMOOTH";
-          (*second)->name="THRESH2_SMOOTH";
-          if(third) (*third)->name="THRESH3_SMOOTH";
           gal_tile_full_values_write(*first, tl, !p->ignoreblankintiles,
                                      filename, NULL, 0);
-          gal_tile_full_values_write(*second, tl, !p->ignoreblankintiles,
-                                     filename, NULL, 0);
-          if(third)
-            gal_tile_full_values_write(*third, tl, !p->ignoreblankintiles,
-                                       filename, NULL, 0);
-          (*first)->name = (*second)->name = NULL;
-          if(third) (*third)->name=NULL;
+          (*first)->name=NULL;
         }
     }
 }
@@ -729,5 +713,6 @@ threshold_quantile_find_apply(struct noisechiselparams *p)
   /* If the user wanted to check the threshold and hasn't called
      'continueaftercheck', then stop NoiseChisel. */
   if(p->qthreshname && !p->continueaftercheck)
-    ui_abort_after_check(p, p->qthreshname, NULL, "quantile threshold check");
+    ui_abort_after_check(p, p->qthreshname, NULL,
+                         "quantile threshold check");
 }
