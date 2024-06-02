@@ -89,14 +89,20 @@ outdir=~/tmp/in-progress/noisechisel-no-crash
 # that will delete that particular program.
 utilname=noisechisel
 arguments="nir2.fits --convolved=nir2-conv.fits"
+options="--checksky --checkqthresh --checktiles --continueaftercheck"
 
-################################################################
-### See why --outliernumngb=10,50 goes SO WRONG and fix it! ####
-################################################################
-arguments=sdss.fits
-options="--meanmedqdiff=1e-3  --checkqthresh"
-################################################################
+#arguments="nir2-cropped.fits"
 
+arguments="sdss.fits --convolved=sdss-conv.fits"
+
+#arguments="hst.fits"
+
+
+
+
+##############################################
+# --minnumfalse also needs to be corrected.
+##############################################
 
 
 
@@ -212,6 +218,7 @@ if make -j$numjobs -C "$builddir"; then
     fi
 
     # Run the built utility with the given arguments and options.
+    rm -f measure.fits nir-2/usage-*.fits test.fits
     "$utility" $arguments $options $extraopts
 
     # Clean up.

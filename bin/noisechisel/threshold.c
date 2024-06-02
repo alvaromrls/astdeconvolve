@@ -380,13 +380,13 @@ qthresh_on_tile_usage_prepare(struct noisechiselparams *p,
 {
   void *tarray=NULL;
   gal_data_t *tblock=NULL;
-  size_t i, ndim=p->input->ndim;
+  size_t ndim=p->input->ndim;
 
   /* Re-initialize the usage array's space (will be changed in
      'gal_data_copy_to_allocated' for each tile). */
-  usage->ndim=ndim;
-  usage->size=p->maxtcontig;
-  memcpy(usage->dsize, p->maxtsize, ndim*sizeof *p->maxtsize);
+  usage->ndim=tile->ndim;
+  usage->size=tile->size;
+  memcpy(usage->dsize, tile->dsize, ndim*sizeof *p->maxtsize);
 
   /* Temporarily change the tile's pointers so we can do the work on
      the convolved image, then copy the desired contents into the
@@ -399,15 +399,6 @@ qthresh_on_tile_usage_prepare(struct noisechiselparams *p,
   gal_data_copy_to_allocated(tile, usage);
   tile->array=tarray;
   tile->block=tblock;
-
-  /* Adjust the 'usage' array pointers that should not be inherited
-     from the tile. We are setting it to 1D because after the clipping,
-     the dimensionality is going to be lost anyway. */
-  usage->size=1;
-  usage->next=NULL;
-  for(i=0;i<usage->ndim;++i) usage->size*=usage->dsize[i];
-  usage->dsize[0]=usage->size; /* Must be after the loop above. */
-  usage->ndim=1;               /* Must be after the loop above. */
 
   /* Return the size of the final 'usage' array (based on this particular
      tile). */
@@ -923,6 +914,13 @@ threshold_quantile_find_apply(struct noisechiselparams *p)
   struct qthreshparams qprm;
   struct gal_options_common_params *cp=&p->cp;
   struct gal_tile_two_layer_params *tl=&cp->tl;
+
+  /* Basic sanity check. */
+  if(p->input->type!=GAL_TYPE_FLOAT32)
+    error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at '%s' to "
+           "address the problem. The type of 'p->input' at this stage "
+           "must be 'float32', but it is '%s'", __func__,
+           PACKAGE_BUGREPORT, gal_type_name(p->input->type, 1));
 
   /* Get the starting time if necessary. */
   if(!p->cp.quiet) gettimeofday(&t1, NULL);

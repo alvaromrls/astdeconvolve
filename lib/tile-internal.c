@@ -30,14 +30,69 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 #include <stdlib.h>
 
 #include <gnuastro/tile.h>
+#include <gnuastro/binary.h>
 #include <gnuastro/threads.h>
 #include <gnuastro/pointer.h>
+#include <gnuastro/arithmetic.h>
 #include <gnuastro/statistics.h>
 #include <gnuastro/interpolate.h>
 #include <gnuastro/permutation.h>
 
 #include <gnuastro-internal/tile-internal.h>
 
+
+
+
+/***********************************************************************/
+/**************          Individual tiles            *******************/
+/***********************************************************************/
+size_t
+gal_tileinternal_medthresh_num_connected(gal_data_t *usage)
+{
+  size_t out=1;
+  gal_data_t *bin, *lab=NULL, *mean;
+
+  /* Calculate the median of the tile and find the number of connected
+     regions above it. */
+  mean=gal_statistics_mean(usage);
+  bin=gal_arithmetic(GAL_ARITHMETIC_OP_GT, 1, GAL_ARITHMETIC_FLAG_NUMOK,
+                     usage, mean);
+  out=gal_binary_connected_components(bin, &lab, usage->ndim);
+
+  /* For a check.
+  gal_fits_img_write(usage, "test.fits", NULL, 0);
+  gal_fits_img_write(bin,   "test.fits", NULL, 0);
+  gal_fits_img_write(lab,   "test.fits", NULL, 0);
+  */
+
+  /* Clean up and return. */
+  gal_data_free(bin);
+  gal_data_free(lab);
+  return out;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/***********************************************************************/
+/**************               Outliers               *******************/
+/***********************************************************************/
 
 /* The main working function for 'threshold_no_outlier'. The main
    purpose/problem is this: when we have channels, the qthresh values for
@@ -314,6 +369,8 @@ struct tileinternal_outlier_local
   uint8_t                *thread_flags;
   gal_list_void_t            *ngb_vals;
   char                     *optionname;
+  double                    outliermad;
+  double                 *outliermclip;
   float (*metric)(size_t *, size_t *, size_t );
 
   struct gal_tile_two_layer_params *tl;
@@ -341,10 +398,11 @@ gal_tileinternal_no_outlier_local_on_thread(void *in_prm)
   void *nv;
   uint8_t *b, *bf, *bb;
   gal_list_void_t *tvll;
+  float *iarr=input->array;
   size_t ngb_counter, pind;
   gal_list_dosizet_t *lQ, *sQ;
-  gal_data_t *tin, *tnear, *nearest=NULL;
-  float dist, pdist, *tnarr, *marr=prm->measure->array;
+  float dist, pdist, *marr=prm->measure->array;
+  gal_data_t *tin, *tnear, *othresh, *nearest=NULL;
   size_t i, index, fullind, chstart=0, ndim=input->ndim;
   size_t size = (correct_index ? tl->tottilesinch : input->size);
   size_t *dsize = (correct_index ? tl->numtilesinch : input->dsize);
@@ -442,10 +500,13 @@ gal_tileinternal_no_outlier_local_on_thread(void *in_prm)
           /* Pop-out (p) an index from the queue: */
           pind=gal_list_dosizet_pop_smallest(&lQ, &sQ, &pdist);
 
-          /* If this isn't a blank value then add its values to the list of
-             neighbor values. Note that we didn't check whether the values
-             were blank or not when adding this pixel to the queue. */
-          if( !(flag[pind] & TILEINTERNAL_OUTLIER_FLAGS_BLANK) )
+          /* If this nearby pixel isn't a blank value, and its value is
+             less than the target, add its value to the list of neighbor
+             values. The blank-check is needed because we didn't check
+             whether the values were blank or not when adding this pixel to
+             the queue. */
+          if( !(flag[pind] & TILEINTERNAL_OUTLIER_FLAGS_BLANK)
+              && iarr[pind]<iarr[fullind])
             {
               tin=input;
               for(tnear=nearest; tnear!=NULL; tnear=tnear->next)
@@ -521,29 +582,40 @@ gal_tileinternal_no_outlier_local_on_thread(void *in_prm)
                                 | GAL_DATA_FLAG_BLANK_CH);
 
               /* For a check on the values (set numthreads=1).
-                 { size_t i; float *f=tnear->array; float *I=input->array;
-                   printf("\n\n%f (%zu):\n", I[fullind], ngb_counter);
-                   for(i=0;i<tnear->size;++i) printf("\t%f\n", f[i]);
-                 } */
+              {
+                size_t i; float *f=tnear->array; float *I=input->array;
+                printf("\n\n%f (%zu):\n", I[fullind], ngb_counter);
+                for(i=0;i<tnear->size;++i) printf("\t%f\n", f[i]);
+              } */
 
-              /* Sort the elements, then find the difference between the
-                 maximium and the value that is just after the minimum. We
-                 are doing this because the scatter in the minimum can be
-                 large. */
-              tnarr=tnear->array;
-              gal_statistics_sort_increasing(tnear);
-              marr[fullind] = tnarr[tnear->size-1]-tnarr[1];
+              /* Find where the outliers within the neighborhood of this
+                 tile start and put the difference of that outlier with the
+                 tile value as the "measure". */
+              othresh=gal_statistics_outlier_bydistance(1, tnear, 1.0/3.0,
+                          prm->outliermad, prm->outliermclip[0],
+                          prm->outliermclip[1], 1, 1);
+              marr[fullind] = ( othresh
+                                ? iarr[fullind] - ((float *)(othresh->array))[0]
+                                : NAN );
 
               /* For a check:
-              { float *I=input->array;
-              printf("%f (%f):\n", I[fullind], marr[fullind]); } */
+              {
+                float *I=input->array, *tnarr=tnear->array;
+                float otval=othresh?((float *)(othresh->array))[0]:NAN;
+                printf("%s: %-10f (%-10f%-10f) %f\n", __func__,
+                       I[fullind], tnarr[tnear->size-1], otval,
+                       marr[fullind]);
+                //exit(0);
+              } */
+
+              /* Clean up. */
+              gal_data_free(othresh);
             }
 
           /* A sufficient number of tiles were not found. */
           else marr[fullind]=NAN;
         }
     }
-
 
   /* Clean up. */
   for(tnear=nearest; tnear!=NULL; tnear=tnear->next) tnear->array=NULL;
@@ -567,14 +639,14 @@ gal_tileinternal_no_outlier_local(gal_data_t *input, gal_data_t *second,
                                   gal_data_t *third,
                                   struct gal_tile_two_layer_params *tl,
                                   uint8_t metric, size_t *numngbs,
-                                  size_t numthreads, double *outliersclip,
-                                  double outliersigma, char *filename,
+                                  size_t numthreads, double *outliermclip,
+                                  double outliermad, char *filename,
                                   char *optionname)
 {
   size_t out=0;
-  size_t owindow, ngbvnum;
+  size_t ngbvnum;
   gal_data_t *othresh=NULL;
-  float *base, *f, *ff, thresh;
+  float *marr, *f, *ff, thresh;
   struct tileinternal_outlier_local prm;
   int permute=(tl && tl->totchannels>1 && tl->workoverch);
 
@@ -619,6 +691,8 @@ gal_tileinternal_no_outlier_local(gal_data_t *input, gal_data_t *second,
   prm.optionname   = optionname;
   prm.minngb       = numngbs[0];
   prm.maxngb       = numngbs[1];
+  prm.outliermad   = outliermad;
+  prm.outliermclip = outliermclip;
 
 
   /* Set the distance metric. */
@@ -675,28 +749,29 @@ gal_tileinternal_no_outlier_local(gal_data_t *input, gal_data_t *second,
 
 
   /* Spin off the threads. */
-  //numthreads=1;
+  //numthreads=1; // comment/un-comment with line after the spin-off.
   gal_threads_spin_off(gal_tileinternal_no_outlier_local_on_thread,
                        &prm, input->size, numthreads, input->minmapsize,
                        input->quietmmap);
   //printf("%s: fix numthreads\n", __func__); exit(0);
 
+
   /* Find the outliers in the distribution, we will start from the first
      third of the cases to find the first outlier. Note that this should
      not be done in-place because we need the 'measure' array later. */
-  owindow=(prm.measure->size - gal_blank_number(prm.measure, 1))/3;
-  othresh=gal_statistics_outlier_bydistance(1, prm.measure, owindow,
-                                            outliersigma, outliersclip[0],
-                                            outliersclip[1], 0, 1);
+  othresh=gal_statistics_outlier_bydistance(1, prm.measure, 1.0/3.0,
+                                            outliermad, outliermclip[0],
+                                            outliermclip[1], 0, 1);
+
 
   /* If an outlier threshold was actually found, then mask all the tiles
      larger than that value. */
   if(othresh)
     {
-      base=prm.measure->array;
+      marr=prm.measure->array;
       ff=(f=input->array)+input->size;
       thresh=((float *)(othresh->array))[0];
-      do { *f = isnan(*f) ? *f : (*base>thresh ? NAN : *f); ++base; }
+      do { *f = isnan(*f) ? *f : (*marr>thresh ? NAN : *f); ++marr; }
       while(++f<ff);
     }
   /* No outlier threshold could be found! Just count how many non-blank
@@ -710,7 +785,8 @@ gal_tileinternal_no_outlier_local(gal_data_t *input, gal_data_t *second,
   if(permute)
     gal_permutation_apply_inverse(prm.measure, tl->permutation);
   gal_tile_full_values_write(prm.measure, tl, 1, "measure.fits",
-                             NULL, NULL);
+                             NULL, 0);
+  printf("%s: GOOD\n", __func__); exit(0);
   */
 
 
@@ -725,13 +801,13 @@ gal_tileinternal_no_outlier_local(gal_data_t *input, gal_data_t *second,
      blank there too. */
   if(second)
     {
-      base=input->array; ff=(f=second->array)+second->size;
-      do { *f = isnan(*base++) ? NAN : *f ;} while(++f<ff);
+      marr=input->array; ff=(f=second->array)+second->size;
+      do { *f = isnan(*marr++) ? NAN : *f ;} while(++f<ff);
     }
   if(third)
     {
-      base=input->array; ff=(f=third->array)+third->size;
-      do { *f = isnan(*base++) ? NAN : *f ;} while(++f<ff);
+      marr=input->array; ff=(f=third->array)+third->size;
+      do { *f = isnan(*marr++) ? NAN : *f ;} while(++f<ff);
     }
 
 

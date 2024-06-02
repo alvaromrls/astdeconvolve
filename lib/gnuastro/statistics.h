@@ -222,9 +222,9 @@ gal_statistics_clip_mad(gal_data_t *input, float multip, float param,
 
 gal_data_t *
 gal_statistics_outlier_bydistance(int pos1_neg0, gal_data_t *input,
-                                  size_t window_size, float sigma,
-                                  float sigclip_multip,
-                                  float sigclip_param, int inplace,
+                                  float window_frac, float mad,
+                                  float madclip_multip,
+                                  float madclip_param, int inplace,
                                   int quiet);
 
 gal_data_t *

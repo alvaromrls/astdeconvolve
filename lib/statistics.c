@@ -818,7 +818,7 @@ gal_statistics_unique(gal_data_t *input, int inplace)
 
   /* Remove all blank elements (note that 'gal_blank_remove' also corrects
      the size of the dataset and sets it to 1D). */
-  gal_blank_remove_realloc(out);
+  gal_blank_remove(out, 0);
   return out;
 }
 
@@ -2885,7 +2885,7 @@ gal_statistics_clip_mad(gal_data_t *input, float multip, float param,
                                                                         \
         /* For a check. */                                              \
         if(quiet==0)                                                    \
-          printf("%f [%zu]: %f (%f, %f) %f\n", (float)(arr[i]), i,      \
+          printf("%f [%zu]: %f (%.0f, %f) %f\n", (float)(arr[i]), i,      \
                  (float)(arr[i]-arr[i-1]),                              \
                  marr[GAL_STATISTICS_CLIP_OUTCOL_NUMBER_USED],          \
                  marr[GAL_STATISTICS_CLIP_OUTCOL_MAD],                  \
@@ -2915,18 +2915,23 @@ gal_statistics_clip_mad(gal_data_t *input, float multip, float param,
   }
 gal_data_t *
 gal_statistics_outlier_bydistance(int pos1_neg0, gal_data_t *input,
-                                  size_t window_size, float mad,
+                                  float window_frac, float mad,
                                   float madclip_multip, float madclip_param,
                                   int inplace, int quiet)
 {
   float *marr;
   double *darr;
+  size_t window_size;
   size_t i, j, one=1, wtakeone;
   gal_data_t *dist, *clip, *nbs, *out=NULL;
   uint8_t clipflags=GAL_STATISTICS_CLIP_OUTCOL_STD;
 
-  /* Remove all blanks and sort the dataset. */
+  /* Remove all blanks, sort the dataset and extract the unique values
+     (repeated values interfere with the statistics and are redundant in
+     this context). */
   nbs=gal_statistics_no_blank_sorted(input, inplace);
+  nbs=gal_statistics_unique(nbs, 1);
+  window_size = nbs->size * window_frac;
 
   /* If all elements are blank, simply return the default (NULL) output. */
   if(nbs->size==0) return out;
@@ -2935,16 +2940,6 @@ gal_statistics_outlier_bydistance(int pos1_neg0, gal_data_t *input,
      "outlier" is hard to define on smaller datasets). */
   if(window_size>2)
     {
-      /* For a check.
-      if(nbs->type==GAL_TYPE_FLOAT32)
-        {
-          float *n=nbs->array;
-          for(i=0;i<nbs->size;++i)
-            printf("%f\n", n[i]);
-          exit(0);
-        }
-      */
-
       /* Allocate space to keep the distances. */
       wtakeone=window_size-1;
       dist=gal_data_alloc(NULL, GAL_TYPE_FLOAT64, 1, &wtakeone, NULL,
@@ -2972,6 +2967,20 @@ gal_statistics_outlier_bydistance(int pos1_neg0, gal_data_t *input,
       /* Clean up. */
       gal_data_free(dist);
     }
+
+  /* For a check.
+  if(nbs->type==GAL_TYPE_FLOAT32)
+    {
+      float *n=nbs->array;
+      printf("%s: unique values\n", __func__);
+      for(i=0;i<nbs->size;++i)
+        printf("\t%-5zu %f\n", i+1, n[i]);
+      printf("\twindow-size: %zu (%g of %zu)\n", window_size,
+             window_frac, nbs->size);
+      printf("\tout: %g\n", ((float *)(out->array))[0]);
+      //exit(0);
+    }
+  */
 
   /* Clean up and return. */
   if(nbs!=input) gal_data_free(nbs);

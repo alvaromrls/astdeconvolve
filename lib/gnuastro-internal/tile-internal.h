@@ -62,6 +62,9 @@ __BEGIN_C_DECLS  /* From C++ preparations */
 #define GAL_TILEINTERNAL_OUTLIER_LOCAL_HDUNAME "NO_OUTLIER"
 
 
+size_t
+gal_tileinternal_medthresh_num_connected(gal_data_t *usage);
+
 void
 gal_tileinternal_no_outlier(gal_data_t *first, gal_data_t *second,
                             gal_data_t *third,
@@ -74,8 +77,8 @@ gal_tileinternal_no_outlier_local(gal_data_t *input, gal_data_t *second,
                                   gal_data_t *third,
                                   struct gal_tile_two_layer_params *tl,
                                   uint8_t metric, size_t *numngbs,
-                                  size_t numthreads, double *outliersclip,
-                                  double outliersigma, char *filename,
+                                  size_t numthreads, double *outliermclip,
+                                  double outliermad, char *filename,
                                   char *optionname);
 
 __END_C_DECLS    /* From C++ preparations */
