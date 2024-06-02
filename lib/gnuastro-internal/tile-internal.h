@@ -59,6 +59,9 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 __BEGIN_C_DECLS  /* From C++ preparations */
 
 
+#define GAL_TILEINTERNAL_OUTLIER_LOCAL_HDUNAME "NO_OUTLIER"
+
+
 void
 gal_tileinternal_no_outlier(gal_data_t *first, gal_data_t *second,
                             gal_data_t *third,

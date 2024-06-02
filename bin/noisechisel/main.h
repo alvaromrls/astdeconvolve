@@ -60,8 +60,8 @@ struct noisechiselparams
   gal_data_t   *concentration;  /* Concentration of signal in the center. */
   float               qthresh;  /* Quantile threshold on convolved image. */
   size_t       *outliernumngb;  /* Number of neighbors to define outliers.*/
-  float          outliersigma;  /* Multiple of sigma to define outlier.   */
-  double      outliersclip[2];  /* Outlier Sigma-clipping params.         */
+  float            outliermad;  /* Multiple of MAD to define outlier.     */
+  double      outliermclip[2];  /* Outlier Sigma-clipping params.         */
   uint8_t     interponlyblank;  /* Only interpolate over blank values.    */
   uint8_t        interpmetric;  /* Metric to use for nearest-ngb interp.  */
   size_t         interpnumngb;  /* Number of neighbors for interpolation. */
@@ -129,8 +129,6 @@ struct noisechiselparams
   size_t       numinitialdets;  /* Number of initial detections.          */
   size_t        numdetections;  /* Number of final detections.            */
   float           detsnthresh;  /* Pseudo-detection S/N threshold.        */
-
-  size_t         outlier_stat;  /* Non-zero if outliers not removed.      */
 };
 
 #endif

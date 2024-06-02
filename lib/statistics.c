@@ -2878,26 +2878,26 @@ gal_statistics_clip_mad(gal_data_t *input, float multip, float param,
           for(j=0; j<wtakeone; ++j)                                     \
             darr[j] = arr[i+window_size-j+1] - arr[i+window_size-j];    \
                                                                         \
-        /* Get the sigma-clipped information. */                        \
-        sclip=gal_statistics_clip_mad(dist, sigclip_multip,             \
-                                      sigclip_param, clipflags, 0, 1);  \
-        sarr=sclip->array;                                              \
+        /* Get the MAD-clipped information. */                          \
+        clip=gal_statistics_clip_mad(dist, madclip_multip,              \
+                                     madclip_param, clipflags, 0, 1);   \
+        marr=clip->array;                                               \
                                                                         \
-        /* For a check. */                                               \
+        /* For a check. */                                              \
         if(quiet==0)                                                    \
           printf("%f [%zu]: %f (%f, %f) %f\n", (float)(arr[i]), i,      \
                  (float)(arr[i]-arr[i-1]),                              \
-                 sarr[GAL_STATISTICS_CLIP_OUTCOL_NUMBER_USED],          \
-                 sarr[GAL_STATISTICS_CLIP_OUTCOL_STD],                  \
+                 marr[GAL_STATISTICS_CLIP_OUTCOL_NUMBER_USED],          \
+                 marr[GAL_STATISTICS_CLIP_OUTCOL_MAD],                  \
                  (((double)(arr[i]-arr[i-1]))                           \
-                  - sarr[GAL_STATISTICS_CLIP_OUTCOL_MEDIAN])            \
-                 /sarr[GAL_STATISTICS_CLIP_OUTCOL_STD]);                \
+                  - marr[GAL_STATISTICS_CLIP_OUTCOL_MEDIAN])            \
+                 /marr[GAL_STATISTICS_CLIP_OUTCOL_MAD]);                \
                                                                         \
         /* Terminate the loop if the dist is larger than requested. */  \
         /* This shows we have reached the first outlier's position. */  \
         if( (((double)(arr[i]-arr[i-1]))                                \
-             - sarr[GAL_STATISTICS_CLIP_OUTCOL_MEDIAN])                 \
-            > sigma*sarr[GAL_STATISTICS_CLIP_OUTCOL_STD] )              \
+             - marr[GAL_STATISTICS_CLIP_OUTCOL_MEDIAN])                 \
+            > mad*marr[GAL_STATISTICS_CLIP_OUTCOL_MAD] )                \
           {                                                             \
             /* Allocate the output dataset. */                          \
             out=gal_data_alloc(NULL, input->type, 1, &one, NULL, 0, -1, \
@@ -2905,24 +2905,24 @@ gal_statistics_clip_mad(gal_data_t *input, float multip, float param,
                                                                         \
             /* Write the outlier, clean up and break. */                \
             *(IT *)(out->array)=arr[i-1];                               \
-            gal_data_free(sclip);                                       \
+            gal_data_free(clip);                                        \
             break;                                                      \
           }                                                             \
                                                                         \
         /* Clean up (if we get here). */                                \
-        gal_data_free(sclip);                                           \
+        gal_data_free(clip);                                           \
       }                                                                 \
   }
 gal_data_t *
 gal_statistics_outlier_bydistance(int pos1_neg0, gal_data_t *input,
-                                  size_t window_size, float sigma,
-                                  float sigclip_multip, float sigclip_param,
+                                  size_t window_size, float mad,
+                                  float madclip_multip, float madclip_param,
                                   int inplace, int quiet)
 {
-  float *sarr;
+  float *marr;
   double *darr;
   size_t i, j, one=1, wtakeone;
-  gal_data_t *dist, *sclip, *nbs, *out=NULL;
+  gal_data_t *dist, *clip, *nbs, *out=NULL;
   uint8_t clipflags=GAL_STATISTICS_CLIP_OUTCOL_STD;
 
   /* Remove all blanks and sort the dataset. */
@@ -3003,9 +3003,9 @@ gal_statistics_outlier_bydistance(int pos1_neg0, gal_data_t *input,
             /* Sigma-clipped median and std for a check. */             \
             prev->flag=0;                                               \
             prev->size=prev->dsize[0]=numprev;                          \
-            sclip=gal_statistics_clip_mad(prev, sigclip_multip,         \
-                                          sigclip_param, clipflags,     \
-                                          1, 1);                        \
+            sclip=gal_statistics_clip_sigma(prev, sigclip_multip,       \
+                                            sigclip_param, clipflags,   \
+                                            1, 1);                      \
                                                                         \
             sarr=sclip->array;                                          \
             check = ( (diff - sarr[GAL_STATISTICS_CLIP_OUTCOL_MEDIAN])  \

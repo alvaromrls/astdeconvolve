@@ -1011,6 +1011,28 @@ gal_fits_hdu_open_format(char *filename, char *hdu, int img0_tab1,
 
 
 
+void
+gal_fits_hdu_delete(char *filename, char *hdu, char *option_name)
+{
+  fitsfile *fptr;
+  int status=0, hdutype;
+
+  /* Open the HDU. */
+  fptr=gal_fits_hdu_open(filename, hdu, READWRITE, 1, option_name);
+
+  /* Delete the extension. */
+  if( fits_delete_hdu(fptr, &hdutype, &status) )
+    gal_fits_io_error(status, NULL);
+  status=0;
+
+  /* Close the file. */
+  fits_close_file(fptr, &status);
+}
+
+
+
+
+
 
 
 

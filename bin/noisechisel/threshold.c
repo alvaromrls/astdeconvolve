@@ -669,6 +669,56 @@ threshold_quantilf_prepare(struct noisechiselparams *p,
 
 
 
+static int
+threshold_quantilf_find_tiles_good(struct noisechiselparams *p,
+                                   struct qthreshparams *qprm)
+{
+  size_t tc, cc, numgood;
+  float *f=qprm->erode_th->array;
+  struct gal_tile_two_layer_params *tl=&p->cp.tl;
+  int out=1; /* Assume the output is good and change it if necessary. */
+
+  /* The input should be float32, if not, it is a bug! */
+  if(p->input->type!=GAL_TYPE_FLOAT32)
+    error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at '%s' to fix "
+          "the problem. The input dataset to this function should have "
+          "a float32 type, but its type is %s", __func__,
+          PACKAGE_BUGREPORT, gal_type_name(p->input->type, 1));
+
+  /* It is mandatory that all channels have at least one non-blank
+     tile. */
+  for(cc=0; cc<tl->totchannels; ++cc)
+    {
+      /* Initialize the number of good tiles to zero. */
+      numgood=0;
+
+      /* Go over all the tiles in this chanel. */
+      for(tc=0; tc<tl->tottilesinch; ++tc)
+        {
+          /* Increment the number of good tiles if the tile's value is not
+             NaN. */
+          numgood += isnan(f[tc+cc*tl->tottilesinch])==0;
+
+          /* For a check
+          printf("%s: (%zu,%zu) %f; numgood: %zu\n", __func__, cc, tc,
+                 f[tc+cc*tl->tottilesinch], numgood);
+          */
+        }
+
+      /* If there weren't any good tiles, then set the output and abort
+         (even if a single channel doesn't have enough tiles, the over-all
+         result is bad). */
+      if(numgood==0) {out=0; break;}
+    }
+
+  /* Return the output value. */
+  return out;
+}
+
+
+
+
+
 /* Find the threshold on each tile, free the temporary processing space and
    set the blank flag on both. Since they have the same blank elements, it
    is only necessary to check one (with the 'updateflag' value set to 1),
@@ -677,26 +727,44 @@ static void
 threshold_quantilf_find_tiles(struct noisechiselparams *p,
                               struct qthreshparams *qprm)
 {
+  char *msg;
   struct gal_options_common_params *cp=&p->cp;
   struct gal_tile_two_layer_params *tl=&cp->tl;
 
   /* Find the good tiles. */
-  //cp->numthreads=1;
-  gal_threads_spin_off(qthresh_on_tile, qprm, tl->tottiles,
-                       cp->numthreads, cp->minmapsize,
-                       cp->quietmmap);
-  free(qprm->usage);
-  //printf("%s: Correct the number of threads\n", __func__); exit(0);
+  while(1)
+    {
+      /* Find the good tiles. */
+      gal_threads_spin_off(qthresh_on_tile, qprm, tl->tottiles,
+                           cp->numthreads, cp->minmapsize,
+                           cp->quietmmap);
 
-  /* Check if the number of acceptable tiles is not zero. */
-  if(qprm->erode_th->size-gal_blank_number(qprm->erode_th, 1)==0)
-    error(EXIT_FAILURE, 0, "no tiles could be found to estimate the "
-          "quantile threshold! Tips: 1) decrease '--tilesize' to "
-          "check for smaller (more numerous) regions within the image "
-          "that are not affected significantly by signal, or 2) "
-          "increase '--meanmedqdiff' (to allow tiles with more "
-          "skewness/signal). Recall that you can see all option "
-          "values with the '--printparams' ('-P') option");
+      /* If we have a non-zero number of good tiles, we can break out of
+         this loop. Otherwise, we need to decrease the quantile threshold
+         and re-calculate the good tiles. */
+      if( threshold_quantilf_find_tiles_good(p, qprm) ) break;
+      else
+        {
+          if(p->meanmedqdiff>0.4)
+            error(EXIT_FAILURE, 0, "no tiles could be found to estimate "
+                  "the quantile threshold! Decrease '--tilesize' "
+                  "to check for smaller (more numerous) regions within "
+                  "the image that are not affected significantly by "
+                  "signal and re-run NoiseChisel");
+          else
+            {
+              /* Increment the quantile threshold. */
+              p->meanmedqdiff *= 1.5;
+
+              /* Let the user know. */
+              if( asprintf(&msg, "WARNING: changed "
+                           "'--meanmedqdiff=%.3g'.", p->meanmedqdiff)<0 )
+                error(EXIT_FAILURE, 0, "%s: asprintf allocation", __func__);
+              gal_timing_report(NULL, msg, 2);
+            }
+        }
+    }
+  free(qprm->usage);
 
   /* Set the flags accordingly.  */
   if( gal_blank_present(qprm->erode_th, 1) )
@@ -726,29 +794,99 @@ static void
 threshold_quantilf_find_apply_outlier(struct noisechiselparams *p,
                                       struct qthreshparams *qprm)
 {
-  char *msg;
+  char *msg, *reason;
+  size_t numchg=0, ostat;
   struct gal_options_common_params *cp=&p->cp;
+  size_t stat=1; /* Must initialize to non-zero value. */
 
-  /* Reject outliers. */
-  p->outlier_stat=gal_tileinternal_no_outlier_local(qprm->erode_th,
-                                                    qprm->noerode_th,
-                                                    qprm->expand_th,
-                                                    &cp->tl,
-                                                    p->interpmetric,
-                                                    p->outliernumngb,
-                                                    cp->numthreads,
-                                                    p->outliersclip,
-                                                    p->outliersigma,
-                                                    p->qthreshname,
-                                                    "--outliernumngb");
-
-  /* If outliers were not removed inform the user. */
-  if(p->outlier_stat)
+  /* Break the loop only when 'stat==0' or if we have made two changes
+     already (ideally, no more than two should be necessary). */
+  while(stat && numchg<2)
     {
-      if( asprintf(&msg, "WARNING: no outlier rejection (set "
-                   "--outliernumngb=%zu).", p->outlier_stat)<0 )
-        error(EXIT_FAILURE, 0, "%s: asprintf allocation", __func__);
-      gal_timing_report(NULL, msg, 2);
+      /* Attempt the outlier rejection and save the status. */
+      stat=gal_tileinternal_no_outlier_local(qprm->erode_th,
+                                             qprm->noerode_th,
+                                             qprm->expand_th,
+                                             &cp->tl,
+                                             p->interpmetric,
+                                             p->outliernumngb,
+                                             cp->numthreads,
+                                             p->outliermclip,
+                                             p->outliermad,
+                                             p->qthreshname,
+                                             "--outliernumngb");
+
+      /* Decide on what to do. */
+      switch(stat)
+        {
+        /* Minimum requested number of tiles were used successfully. */
+        case 0: break;
+
+        /* Number of tiles too small for a meaningful outlier rejection; so
+           there is no need to continue and we'll just print a message and
+           set stat to zero (so the loop doesn't continue). */
+        case 1: case 2: case 3: case 4:
+          if( asprintf(&msg, "WARNING: not enough tiles for outlier "
+                       "rejection.")<0 )
+            error(EXIT_FAILURE, 0, "%s: asprintf allocation", __func__);
+          gal_timing_report(NULL, msg, 2);
+          free(msg);
+          stat=0;
+          break;
+
+        /* We need to change '--outliernumngb'. */
+        default:
+
+          /* For the printed message. */
+          ostat=stat;
+
+          /* When'stat' (the number of non-blank elements in the input), is
+             larger than the minimum number of outliers, there is a problem
+             (otherwise, 'stat' should have been zero). The problem happens
+             when the maximum number is more than the total number of
+             available points. As a result: the "measure" of all tiles
+             becomes the same and there is no outliers by definition! In
+             this case, we should decrease the maximum number to about half
+             of the total numer so we get a good distribution. We will also
+             decrease the minimum, so the minimum is smaller than the
+             maximum (has no effect otherwise!). */
+          if(stat>=p->outliernumngb[0])
+            {
+              reason="max was too large";
+              p->outliernumngb[1]=stat/2;
+              p->outliernumngb[0]=stat/2-1;
+
+              /* Increment the number of changes we are making (we don't
+                 want too many of these changes). */
+              ++numchg;
+            }
+
+          /* When 'stat' is less than the minimum number of outliers, we
+             just have to set the minimum number to half the total number
+             of available tiles (similar to above: to have sufficient
+             diversity). */
+          else
+            {
+              reason="min was too large";
+              p->outliernumngb[0]-=1;
+            }
+
+          /* In case a check image was made, delete the previously added
+             HDU. */
+          if(p->qthreshname)
+            gal_fits_hdu_delete(p->qthreshname,
+                                GAL_TILEINTERNAL_OUTLIER_LOCAL_HDUNAME,
+                                NULL);
+
+          /* Print a warning message. */
+          if( asprintf(&msg, "WARNING: changed "
+                       "'--outliernumngb=%zu,%zu' (all: %zu, %s)",
+                       p->outliernumngb[0], p->outliernumngb[1],
+                       ostat, reason)<0 )
+            error(EXIT_FAILURE, 0, "%s: asprintf allocation", __func__);
+          gal_timing_report(NULL, msg, 2);
+          free(msg);
+        }
     }
 }
 

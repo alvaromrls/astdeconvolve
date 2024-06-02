@@ -71,7 +71,7 @@
 # space characters in them, quote the full value
 numjobs=8
 builddir=build
-outdir=~/tmp
+outdir=~/tmp/in-progress/noisechisel-no-crash
 
 
 
@@ -89,9 +89,13 @@ outdir=~/tmp
 # that will delete that particular program.
 utilname=noisechisel
 arguments="nir2.fits --convolved=nir2-conv.fits"
-arguments=sdss.fits
-options="--checkqthresh --tilesize=50,50"
 
+################################################################
+### See why --outliernumngb=10,50 goes SO WRONG and fix it! ####
+################################################################
+arguments=sdss.fits
+options="--meanmedqdiff=1e-3  --checkqthresh"
+################################################################
 
 
 

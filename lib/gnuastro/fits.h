@@ -188,7 +188,8 @@ fitsfile *
 gal_fits_hdu_open_format(char *filename, char *hdu, int img0_tab1,
                          char *hdu_option_name);
 
-
+void
+gal_fits_hdu_delete(char *filename, char *hdu, char *option_name);
 
 
 /**************************************************************/

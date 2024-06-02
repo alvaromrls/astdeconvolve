@@ -520,11 +520,11 @@ gal_tileinternal_no_outlier_local_on_thread(void *in_prm)
               tnear->flag &= ~(   GAL_DATA_FLAG_SORT_CH
                                 | GAL_DATA_FLAG_BLANK_CH);
 
-              /* For a check on the values.
+              /* For a check on the values (set numthreads=1).
                  { size_t i; float *f=tnear->array; float *I=input->array;
-                 printf("\n\n%f:\n", I[fullind]);
-                 for(i=0;i<tnear->size;++i) printf("\t%f\n", f[i]);
-                 }*/
+                   printf("\n\n%f (%zu):\n", I[fullind], ngb_counter);
+                   for(i=0;i<tnear->size;++i) printf("\t%f\n", f[i]);
+                 } */
 
               /* Sort the elements, then find the difference between the
                  maximium and the value that is just after the minimum. We
@@ -533,6 +533,10 @@ gal_tileinternal_no_outlier_local_on_thread(void *in_prm)
               tnarr=tnear->array;
               gal_statistics_sort_increasing(tnear);
               marr[fullind] = tnarr[tnear->size-1]-tnarr[1];
+
+              /* For a check:
+              { float *I=input->array;
+              printf("%f (%f):\n", I[fullind], marr[fullind]); } */
             }
 
           /* A sufficient number of tiles were not found. */
@@ -568,8 +572,8 @@ gal_tileinternal_no_outlier_local(gal_data_t *input, gal_data_t *second,
                                   char *optionname)
 {
   size_t out=0;
-  gal_data_t *othresh;
   size_t owindow, ngbvnum;
+  gal_data_t *othresh=NULL;
   float *base, *f, *ff, thresh;
   struct tileinternal_outlier_local prm;
   int permute=(tl && tl->totchannels>1 && tl->workoverch);
@@ -671,10 +675,11 @@ gal_tileinternal_no_outlier_local(gal_data_t *input, gal_data_t *second,
 
 
   /* Spin off the threads. */
+  //numthreads=1;
   gal_threads_spin_off(gal_tileinternal_no_outlier_local_on_thread,
                        &prm, input->size, numthreads, input->minmapsize,
                        input->quietmmap);
-
+  //printf("%s: fix numthreads\n", __func__); exit(0);
 
   /* Find the outliers in the distribution, we will start from the first
      third of the cases to find the first outlier. Note that this should
@@ -683,7 +688,6 @@ gal_tileinternal_no_outlier_local(gal_data_t *input, gal_data_t *second,
   othresh=gal_statistics_outlier_bydistance(1, prm.measure, owindow,
                                             outliersigma, outliersclip[0],
                                             outliersclip[1], 0, 1);
-
 
   /* If an outlier threshold was actually found, then mask all the tiles
      larger than that value. */
@@ -734,7 +738,7 @@ gal_tileinternal_no_outlier_local(gal_data_t *input, gal_data_t *second,
   /* Write the check images if necessary. */
   if(filename)
     {
-      input->name="VALUE1_NO_OUTLIER";
+      input->name=GAL_TILEINTERNAL_OUTLIER_LOCAL_HDUNAME;
       gal_tile_full_values_write(input, tl, 1, filename, NULL, 0);
       input->name=NULL;
     }
