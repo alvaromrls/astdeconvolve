@@ -530,10 +530,10 @@ clumps_write_sn_table(struct segmentparams *p, gal_data_t *insn,
   if( gal_blank_present(inind, 1) )
     {
       /* Remove blank elements. */
-      ind=gal_data_copy(inind);
       sn=gal_data_copy(insn);
-      gal_blank_remove(ind, 0);
       gal_blank_remove(sn, 0);
+      ind=gal_data_copy(inind);
+      gal_blank_remove(ind, 0);
 
       /* A small sanity check. */
       if(ind->size==0 || sn->size==0)

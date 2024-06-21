@@ -29,6 +29,7 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 #include <stdlib.h>
 
 #include <gnuastro/fits.h>
+#include <gnuastro/qsort.h>
 #include <gnuastro/blank.h>
 #include <gnuastro/threads.h>
 #include <gnuastro/pointer.h>
@@ -409,9 +410,10 @@ qthresh_on_tile_usage_prepare(struct noisechiselparams *p,
 
 
 
+#if 0
 /* Calculate the MAD-clipped mean quantile. */
 static double
-qthresh_on_tile_mean_quant(gal_data_t *usage)
+qthresh_on_tile_mean_quant(gal_data_t *usage, int check)
 {
   size_t one=1;
   double meanquant;
@@ -419,7 +421,9 @@ qthresh_on_tile_mean_quant(gal_data_t *usage)
   uint8_t extrastats=GAL_STATISTICS_CLIP_OUTCOL_OPTIONAL_MEAN;
 
   /* Do the MAD-clipping in-place. */
+  if(check) printf("%s: %zu\n", __func__, usage->size);
   clip=gal_statistics_clip_mad(usage, 4.5, 0.01, extrastats, 1, 1);
+  if(check) printf("%s: %zu\n", __func__, usage->size);
   mean=gal_data_alloc(NULL, clip->type, 1, &one, NULL, 0, -1, 1,
                       NULL, NULL, NULL);
   memcpy(mean->array,
@@ -438,11 +442,69 @@ qthresh_on_tile_mean_quant(gal_data_t *usage)
   gal_data_free(mean);
   return meanquant;
 }
+#endif
+
+
+
+/* Return 1 if the tile is good, otherwise, return 0. */
+static int
+qthresh_on_tile_is_good(gal_data_t *usage, float gradthresh, int check)
+{
+  /* The 3 is the maximum number of dimensions and the 6 is double that
+     (the maximum number of means we will measure). */
+  size_t numm;
+  double means[6], sum, mmid;
+  gal_data_t *tmp, *mean, *subtiles=NULL;
+  size_t i, regular[3], *ntiles, *firsttsize;
+
+  /* For a check (don't forget to delete the file before running because
+     'gal_fits_img_write' will add a new HDU to existing ones). Since this
+     is just for a developer's check, we don't want to complicate the
+     program by deleting any existig file.*/
+  if(check) gal_fits_img_write(usage, "usage.fits", NULL, 0);
+
+  /* Divide the input into two regions for each dimension. */
+  for(i=0;i<usage->ndim;++i) regular[i]=usage->dsize[i]/2;
+  ntiles=gal_tile_full(usage, regular, 0.8, &subtiles, 1,
+                       &firsttsize);
+
+  /* Go over each tile and measure the mean. */
+  i=0;
+  for(tmp=subtiles; tmp!=NULL; tmp=tmp->next)
+    {
+      /* Calculate the tile's mean. */
+      mean=gal_data_copy_to_new_type_free(gal_statistics_mean(tmp),
+                                          GAL_TYPE_FLOAT64);
+      means[i++]=((double *)(mean->array))[0];
+
+      /* For a check: */
+      if(check) printf("%s: %f\n", __func__, means[i-1]);
+
+      /* Clean up. */
+      gal_data_free(mean);
+    }
+
+  /* Sort the values.*/
+  numm=usage->ndim*2;
+  qsort(means, numm, sizeof(double), gal_qsort_float64_i);
+
+  /* Calculate the mean of the non-minimum/maximum values. */
+  sum=0.0; for(i=1;i<numm-1;++i) sum+=means[i]; mmid=sum/(numm-2);
+
+  /* For a check. */
+  if(check)
+    printf("%s:result: %f\n", __func__, (means[numm-1] - means[0])/mmid);
+
+  /* Clean up and return. */
+  free(ntiles);
+  return ((means[numm-1] - means[0])/mmid) < gradthresh ;
+}
 
 
 
 
 
+#if 0
 /* See if the tile's distribution is concentrated or not. */
 static int
 qthresh_on_tile_concentrated(gal_data_t *usage, double width,
@@ -470,7 +532,7 @@ qthresh_on_tile_concentrated(gal_data_t *usage, double width,
   gal_data_free(measured);
   return out;
 }
-
+#endif
 
 
 
@@ -524,8 +586,11 @@ qthresh_on_tile(void *in_prm)
   int type=qprm->erode_th->type;
   size_t i, tind, ndim=p->input->ndim;
   gal_data_t *tile, *usage, *tblock=NULL;
-  double meanquant, *concent=p->concentration->array;
   gal_data_t *meanconv = p->wconv ? p->wconv : p->conv;
+
+  /*********************************************************/
+  float gradthresh=0.001;
+  /*********************************************************/
 
   /* Put the temporary usage space for this thread into a dataset for easy
      processing. */
@@ -544,18 +609,11 @@ qthresh_on_tile(void *in_prm)
       tile=&p->cp.tl.tiles[tind];
       initsize=qthresh_on_tile_usage_prepare(p, usage, tile, meanconv);
 
-      /* Find the mean's quantile after clipping inplace. */
-      meanquant=qthresh_on_tile_mean_quant(usage);
-
       /* Only continue when: 1) the mean's quantile is below the median,
          but not too much (close enough to the median). 2) The faction of
          usable pixels is not too small. 3) the flux distribution is
          concentrated. */
-      if(    meanquant<0.5f+p->meanmedqdiff
-          && meanquant>0.5f-p->meanmedqdiff
-          && (float)usage->size/(float)initsize > p->minskyfrac
-          && qthresh_on_tile_concentrated(usage, concent[0], concent[1],
-                                          tind) )
+      if( qthresh_on_tile_is_good(usage, gradthresh, tind==166013) )
         {
           /* The mean was found on the wider convolved image, but the
              qthresh values have to be found on the sharper convolved
@@ -934,6 +992,7 @@ threshold_quantile_find_apply(struct noisechiselparams *p)
   /* Remove outliers. */
   if(p->outliernumngb)
     threshold_quantilf_find_apply_outlier(p, &qprm);
+  printf("%s: GOOD\n", __func__); exit(0);
 
   /* Interpolate to fill the grid. */
   threshold_quantilf_interpolate(p, &qprm);

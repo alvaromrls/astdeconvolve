@@ -595,7 +595,8 @@ gal_tileinternal_no_outlier_local_on_thread(void *in_prm)
                           prm->outliermad, prm->outliermclip[0],
                           prm->outliermclip[1], 1, 1);
               marr[fullind] = ( othresh
-                                ? iarr[fullind] - ((float *)(othresh->array))[0]
+                                ? ( iarr[fullind]
+                                    - ((float *)(othresh->array))[0] )
                                 : NAN );
 
               /* For a check:

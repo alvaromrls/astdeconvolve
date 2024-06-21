@@ -88,21 +88,24 @@ outdir=~/tmp/in-progress/noisechisel-no-crash/nir2
 #    'if [ -f "$utility" ]; then rm "$utility"; fi'
 # that will delete that particular program.
 utilname=noisechisel
-arguments="nir2.fits --convolved=nir2-conv.fits"
-options="--checktiles"
+arguments="img.fits --convolved=img-conv.fits"
+options="--tilesize=10,10 --checkqthresh"
 
-#arguments="nir2-cropped.fits"
-
-#arguments="sdss.fits --convolved=sdss-conv.fits"
-
-#arguments="hst.fits"
-
+# Tiles (--tilesize=10,10):
+#  New work:
+#    Bad: 166013
+#
+#  Until last commit
+#   Good: 195561 196074 196587 197100 197613 199153 199154
+#   Bad:  129019 190965 191479
 
 
 
 ##############################################
 # --minnumfalse also needs to be corrected.
 ##############################################
+
+
 
 
 
@@ -218,7 +221,7 @@ if make -j$numjobs -C "$builddir"; then
     fi
 
     # Run the built utility with the given arguments and options.
-    rm -f measure.fits nir-2/usage-*.fits test.fits
+    rm -f usage.fits
     "$utility" $arguments $options $extraopts
 
     # Clean up.
