@@ -953,7 +953,7 @@ arithmetic_interpolate(struct arithmeticparams *p, int operator, char *token)
     }
 
   /* Call the interpolation function. */
-  interpolated=gal_interpolate_neighbors(in, NULL, p->cp.interpmetric,
+  interpolated=gal_interpolate_neighbors(in, NULL, p->interpmetric,
                                          num_int, p->cp.numthreads,
                                          1, 0, interpop);
 

@@ -194,6 +194,31 @@ struct argp_option program_options[] =
       GAL_OPTIONS_NOT_SET
     },
 
+
+
+
+
+    /* Parameters for some operations. */
+    {
+      0, 0, 0, 0,
+      "Operator parameters",
+      UI_GROUP_OPPARAMS
+    },
+    {
+      "interpmetric",
+      UI_KEY_INTERPMETRIC,
+      "STR",
+      0,
+      "Interpolation metric (radial, manhattan).",
+      UI_GROUP_OPPARAMS,
+      &p->interpmetric,
+      GAL_TYPE_STRING,
+      GAL_OPTIONS_RANGE_ANY,
+      GAL_OPTIONS_MANDATORY,
+      GAL_OPTIONS_NOT_SET,
+      gal_options_read_interpmetric
+    },
+
     {0}
   };
 

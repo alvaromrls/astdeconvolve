@@ -130,8 +130,6 @@ ui_initialize_options(struct convolveparams *p,
 
       case GAL_OPTIONS_KEY_LOG:
       case GAL_OPTIONS_KEY_IGNORECASE:
-      case GAL_OPTIONS_KEY_INTERPNUMNGB:
-      case GAL_OPTIONS_KEY_INTERPONLYBLANK:
         cp->coptions[i].flags=OPTION_HIDDEN;
         break;
       }

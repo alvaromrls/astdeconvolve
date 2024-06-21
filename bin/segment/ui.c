@@ -143,7 +143,6 @@ ui_initialize_options(struct segmentparams *p,
         case GAL_OPTIONS_KEY_TILESIZE:
         case GAL_OPTIONS_KEY_MINMAPSIZE:
         case GAL_OPTIONS_KEY_NUMCHANNELS:
-        case GAL_OPTIONS_KEY_INTERPNUMNGB:
         case GAL_OPTIONS_KEY_REMAINDERFRAC:
           cp->coptions[i].mandatory=GAL_OPTIONS_MANDATORY;
           break;

@@ -146,8 +146,6 @@ ui_initialize_options(struct mkcatalogparams *p,
         case GAL_OPTIONS_KEY_IGNORECASE:
         case GAL_OPTIONS_KEY_WORKOVERCH:
         case GAL_OPTIONS_KEY_STDINTIMEOUT:
-        case GAL_OPTIONS_KEY_INTERPNUMNGB:
-        case GAL_OPTIONS_KEY_INTERPONLYBLANK:
           cp->coptions[i].flags=OPTION_HIDDEN;
           cp->coptions[i].mandatory=GAL_OPTIONS_NOT_MANDATORY;
           break;

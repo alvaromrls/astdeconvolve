@@ -30,6 +30,16 @@ along with Gnuastro. If not, see <http://www.gnu.org/licenses/>.
 
 
 
+/* Option groups particular to this program. */
+enum program_args_groups
+{
+  UI_GROUP_OPPARAMS = GAL_OPTIONS_GROUP_AFTER_COMMON,
+};
+
+
+
+
+
 /* Available letters for short options:
 
    b d e f i j k l m p r t v x y z
@@ -53,6 +63,7 @@ enum option_keys_enum
   UI_KEY_APPEND          = 1000,
   UI_KEY_ENVSEED,
   UI_KEY_ARGUMENTS,
+  UI_KEY_INTERPMETRIC,
 };
 
 

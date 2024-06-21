@@ -71,7 +71,7 @@
 # space characters in them, quote the full value
 numjobs=8
 builddir=build
-outdir=~/tmp/in-progress/noisechisel-no-crash
+outdir=~/tmp/in-progress/noisechisel-no-crash/nir2
 
 
 
@@ -89,11 +89,11 @@ outdir=~/tmp/in-progress/noisechisel-no-crash
 # that will delete that particular program.
 utilname=noisechisel
 arguments="nir2.fits --convolved=nir2-conv.fits"
-options="--checksky --checkqthresh --checktiles --continueaftercheck"
+options="--checktiles"
 
 #arguments="nir2-cropped.fits"
 
-arguments="sdss.fits --convolved=sdss-conv.fits"
+#arguments="sdss.fits --convolved=sdss-conv.fits"
 
 #arguments="hst.fits"
 
