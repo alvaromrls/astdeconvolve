@@ -453,9 +453,13 @@ qthresh_on_tile_is_good(gal_data_t *usage, float gradthresh, int check)
   /* The 3 is the maximum number of dimensions and the 6 is double that
      (the maximum number of means we will measure). */
   size_t numm;
-  double means[6], sum, mmid;
+  double means[6], sum, mmid, measure;
   gal_data_t *tmp, *mean, *subtiles=NULL;
   size_t i, regular[3], *ntiles, *firsttsize;
+
+  /* Basic sanity check. */
+  if(usage->type!=GAL_TYPE_FLOAT32)
+    error(EXIT_FAILURE, 0, "%s: 'usage' should be float32", __func__);
 
   /* For a check (don't forget to delete the file before running because
      'gal_fits_img_write' will add a new HDU to existing ones). Since this
@@ -473,8 +477,7 @@ qthresh_on_tile_is_good(gal_data_t *usage, float gradthresh, int check)
   for(tmp=subtiles; tmp!=NULL; tmp=tmp->next)
     {
       /* Calculate the tile's mean. */
-      mean=gal_data_copy_to_new_type_free(gal_statistics_mean(tmp),
-                                          GAL_TYPE_FLOAT64);
+      mean=gal_statistics_mean(tmp);
       means[i++]=((double *)(mean->array))[0];
 
       /* For a check: */
@@ -490,14 +493,16 @@ qthresh_on_tile_is_good(gal_data_t *usage, float gradthresh, int check)
 
   /* Calculate the mean of the non-minimum/maximum values. */
   sum=0.0; for(i=1;i<numm-1;++i) sum+=means[i]; mmid=sum/(numm-2);
+  measure=(means[numm-1] - means[0])/means[0];
 
   /* For a check. */
-  if(check)
-    printf("%s:result: %f\n", __func__, (means[numm-1] - means[0])/mmid);
+  if(check) printf("%s:measure: %f\n", __func__, measure);
 
-  /* Clean up and return. */
+  /* Clean up and return.
+   ----------------------------
+   Don't forget to free all the gal_tile_full outputs.*/
   free(ntiles);
-  return ((means[numm-1] - means[0])/mmid) < gradthresh ;
+  return measure < gradthresh ;
 }
 
 
@@ -589,7 +594,8 @@ qthresh_on_tile(void *in_prm)
   gal_data_t *meanconv = p->wconv ? p->wconv : p->conv;
 
   /*********************************************************/
-  float gradthresh=0.001;
+  float gradthresh=0.002;
+  size_t tilecheck=199154;
   /*********************************************************/
 
   /* Put the temporary usage space for this thread into a dataset for easy
@@ -613,7 +619,7 @@ qthresh_on_tile(void *in_prm)
          but not too much (close enough to the median). 2) The faction of
          usable pixels is not too small. 3) the flux distribution is
          concentrated. */
-      if( qthresh_on_tile_is_good(usage, gradthresh, tind==166013) )
+      if( qthresh_on_tile_is_good(usage, gradthresh, tind==tilecheck) )
         {
           /* The mean was found on the wider convolved image, but the
              qthresh values have to be found on the sharper convolved

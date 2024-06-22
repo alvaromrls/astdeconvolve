@@ -71,7 +71,7 @@
 # space characters in them, quote the full value
 numjobs=8
 builddir=build
-outdir=~/tmp/in-progress/noisechisel-no-crash/nir2
+outdir=~/tmp/in-progress/noisechisel-no-crash/sdss
 
 
 
@@ -92,12 +92,15 @@ arguments="img.fits --convolved=img-conv.fits"
 options="--tilesize=10,10 --checkqthresh"
 
 # Tiles (--tilesize=10,10):
-#  New work:
-#    Bad: 166013
+#
+# Good: 195561   196074   196587   197100   197613   199153   199154
+#       0.001818 0.001016 0.000854 0.001526 0.001702 0.001280 0.001122
+#
+# New work:
+#  Bad: 43796 166013
 #
 #  Until last commit
-#   Good: 195561 196074 196587 197100 197613 199153 199154
-#   Bad:  129019 190965 191479
+#  Bad:  129019 190965 191479
 
 
 
