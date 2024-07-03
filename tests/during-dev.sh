@@ -71,7 +71,7 @@
 # space characters in them, quote the full value
 numjobs=8
 builddir=build
-outdir=~/tmp/in-progress/noisechisel-no-crash/sdss
+outdir=~/tmp/in-progress/noisechisel-no-crash/nir2
 
 
 
@@ -89,9 +89,10 @@ outdir=~/tmp/in-progress/noisechisel-no-crash/sdss
 # that will delete that particular program.
 utilname=noisechisel
 arguments="img.fits --convolved=img-conv.fits"
-options="--tilesize=10,10 --checkqthresh"
+options="--tilesize=8,8 --checkqthresh --oneelempertile"
 
-# Tiles (--tilesize=10,10):
+# SDSS:
+#   Tiles (--tilesize=10,10):
 #
 # Good: 195561   196074   196587   197100   197613   199153   199154
 #       0.001818 0.001016 0.000854 0.001526 0.001702 0.001280 0.001122

@@ -453,7 +453,7 @@ qthresh_on_tile_is_good(gal_data_t *usage, float gradthresh, int check)
   /* The 3 is the maximum number of dimensions and the 6 is double that
      (the maximum number of means we will measure). */
   size_t numm;
-  double means[6], sum, mmid, measure;
+  double means[6], measure;
   gal_data_t *tmp, *mean, *subtiles=NULL;
   size_t i, regular[3], *ntiles, *firsttsize;
 
@@ -491,8 +491,8 @@ qthresh_on_tile_is_good(gal_data_t *usage, float gradthresh, int check)
   numm=usage->ndim*2;
   qsort(means, numm, sizeof(double), gal_qsort_float64_i);
 
-  /* Calculate the mean of the non-minimum/maximum values. */
-  sum=0.0; for(i=1;i<numm-1;++i) sum+=means[i]; mmid=sum/(numm-2);
+  /* The final measure is the difference between the minimum and maximum
+     and scale it by the minimum. */
   measure=(means[numm-1] - means[0])/means[0];
 
   /* For a check. */
@@ -586,7 +586,6 @@ qthresh_on_tile(void *in_prm)
   struct qthreshparams *qprm=(struct qthreshparams *)tprm->params;
   struct noisechiselparams *p=qprm->p;
 
-  size_t initsize;
   void *tarray=NULL;
   int type=qprm->erode_th->type;
   size_t i, tind, ndim=p->input->ndim;
@@ -613,7 +612,7 @@ qthresh_on_tile(void *in_prm)
          change, reorder and etc. */
       tind = tprm->indexs[i];
       tile=&p->cp.tl.tiles[tind];
-      initsize=qthresh_on_tile_usage_prepare(p, usage, tile, meanconv);
+      qthresh_on_tile_usage_prepare(p, usage, tile, meanconv);
 
       /* Only continue when: 1) the mean's quantile is below the median,
          but not too much (close enough to the median). 2) The faction of
