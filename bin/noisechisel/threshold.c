@@ -509,39 +509,6 @@ qthresh_on_tile_is_good(gal_data_t *usage, float gradthresh, int check)
 
 
 
-#if 0
-/* See if the tile's distribution is concentrated or not. */
-static int
-qthresh_on_tile_concentrated(gal_data_t *usage, double width,
-                             double thresh, size_t tind)
-{
-  int out=0;
-  double *m;
-  gal_data_t *measured;
-
-  /* Small sanity check. */
-  if(usage->type!=GAL_TYPE_FLOAT32)
-    error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at '%s' to "
-          "fix the problem. The type of the 'usage' array should be "
-          "float32, but it is '%s'", __func__, PACKAGE_BUGREPORT,
-          gal_type_name(usage->type, 1));
-
-  /* Measure the concentration. */
-  measured=gal_statistics_concentration(usage, width, 1);
-  m=measured->array;
-
-  /* See if it is above the threshold or not. */
-  out = m[0] > thresh;
-
-  /* Clean up and return. */
-  gal_data_free(measured);
-  return out;
-}
-#endif
-
-
-
-
 static void
 qthresh_on_tile_write(struct qthreshparams *qprm, gal_data_t *usage,
                       size_t tind)
