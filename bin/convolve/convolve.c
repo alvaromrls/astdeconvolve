@@ -84,17 +84,17 @@ frequency_make_padded_complex(struct convolveparams *p)
 
 
   /* Allocate the space for the padded Kernel and fill it. */
-  pker=p->pker=gal_pointer_allocate(GAL_TYPE_FLOAT64, 2*ps0*ps1, 0,
-                                    __func__, "pker");
-  for(i=0;i<ps0;++i)
-    {
-      op=(o=pker+i*2*ps1)+2*ps1; /* pker is complex.            */
-      if(i<ks0)
-        {
-          ff=(f=kernel+i*ks1)+ks1;
-          do {*o++=*f; *o++=0.0f;} while(++f<ff);
-        }
-      do *o++=0.0f; while(o<op);
+    pker = p->pker = gal_pointer_allocate (GAL_TYPE_COMPLEX64, ps0 * ps1, 0,
+                                           __func__, "pker");
+
+    for (size_t x = 0; x < ks0; x++) {
+      for (size_t y = 0; y < ks1; y++) {
+        // index for the kernel
+        size_t kindex = y + x * ks0;
+        // index for the kernel position in the image
+        size_t index = (x + ps0 / 2 - ks0 / 2) * ps0 + (y + ps1 / 2 - ks1 / 2);
+        pker[index * 2] = kernel[kindex];
+      }
     }
 }
 
@@ -122,18 +122,15 @@ removepaddingcorrectroundoff(struct convolveparams *p)
      case of deconvolution, if the maximum radius is larger than the input
      image, we will also only be using region that contains non-zero rows
      and columns. */
-  if(p->makekernel)
-    {
-      hi0      = mkwidth < isize[0] ? p->ps0/2-p->makekernel : 0;
-      hi1      = mkwidth < isize[1] ? p->ps1/2-p->makekernel : 0;
-      isize[0] = mkwidth < isize[0] ? 2*p->makekernel-1 : isize[0];
-      isize[1] = mkwidth < isize[1] ? 2*p->makekernel-1 : isize[1];
-    }
-  else
-    {
-      hi0 = ( p->kernel->dsize[0] - 1 )/2;
-      hi1 = ( p->kernel->dsize[1] - 1 )/2;
-    }
+  if (p->makekernel) {
+    hi0 = mkwidth < isize[0] ? p->ps0 / 2 - p->makekernel + 1 : 0;
+    hi1 = mkwidth < isize[1] ? p->ps1 / 2 - p->makekernel + 1 : 0;
+    isize[0] = mkwidth < isize[0] ? 2 * p->makekernel - 1 : isize[0];
+    isize[1] = mkwidth < isize[1] ? 2 * p->makekernel - 1 : isize[1];
+  } else {
+    hi0 = (p->kernel->dsize[0] - 1) / 2;
+    hi1 = (p->kernel->dsize[1] - 1) / 2;
+  }
 
   /* To start with, 'start' points to the first pixel in the final
      image: */
@@ -151,73 +148,6 @@ removepaddingcorrectroundoff(struct convolveparams *p)
     }
 }
 
-/* Unfortunately I don't understand why the division operation in
-   deconvolution (makekernel) does not produce a centered image, the
-   image is translated by half the input size in both dimensions. So I
-   am correcting this in the spatial domain here. */
-void
-correctdeconvolve(struct convolveparams *p, double **spatial)
-{
-  double r, *s, *n, *d, *df, sum=0.0f;
-  size_t i, j, ps0=p->ps0, ps1=p->ps1;
-  int ii, jj, ci=p->ps0/2-1, cj=p->ps1/2-1;
-
-  /* Check if the image has even sides. */
-  if(ps0%2 || ps1%2)
-    error(EXIT_FAILURE, 0, "%s: a bug! Please contact us at %s. The padded "
-          "image sides are not an even number", __func__, PACKAGE_BUGREPORT);
-
-  /* First convert the complex image to a real image: */
-  s = gal_complex_to_real (p->pimg, ps0 * ps1, COMPLEX_TO_REAL_REAL);
-
-  /* Allocate the array to keep the new values. */
-  errno=0;
-  n=malloc(ps0*ps1*sizeof *n);
-  if(n==NULL)
-    error(EXIT_FAILURE, errno, "%s: allocating %zu bytes for 'n'",
-          __func__, ps0*ps1*sizeof *n);
-
-
-  /* Put the elements in their proper place: For example in one
-     dimension where the values are actually the true distances:
-
-        s[0]=0, s[1]=1, s[2]=2, s[3]=3, s[4]=4, s[5]=5
-
-     We want the value 0 to be in the 'center'. Note that 's' is
-     periodic, for example the next 6 elements have distances:
-
-        s[6]=0, s[7]=1, s[8]=2, s[9]=3, s[10]=4, s[11]=5
-
-     So a 'center'ed array would be like:
-
-        s[0]=4, s[1]=5, s[2]=0, s[3]=1, s[4]=2, s[5]=3
-
-     The relations between the old (i and j) and new (ii and jj) come
-     from something like the above line.
-   */
-  for(i=0;i<ps0;++i)
-    {
-      ii= i>ps0/2 ? i-(ps0/2+1) : i+ps0/2-1;
-      for(j=0;j<ps1;++j)
-        {
-          jj = j>ps1/2 ? j-(ps1/2+1) : j+ps1/2-1;
-
-          r=sqrt( (ii-ci)*(ii-ci) + (jj-cj)*(jj-cj) );
-          sum += n[ii*ps1+jj] = r < p->makekernel ? s[i*ps1+j] : 0;
-
-          /*printf("(%zu, %zu) --> (%zu, %zu)\n", i, j, ii, jj); */
-        }
-    }
-
-
-  /* Divide all elements by the sum so the kernel is normalized: */
-  df=(d=n)+ps0*ps1; do *d++/=sum; while(d<df);
-
-
-  /* Clean up. */
-  free(s);
-  *spatial=n;
-}
 
 void
 convolve_frequency(struct convolveparams *p)
@@ -244,6 +174,7 @@ convolve_frequency(struct convolveparams *p)
   dsize[0] = p->ps0;
   dsize[1] = p->ps1;
   total_size = dsize[0] * dsize[1];
+  gal_fft_shift_center (p->pker, dsize);
 
   if(!p->cp.quiet)
     gal_timing_report(&t1, "Input and Kernel images padded.", 1);
@@ -347,11 +278,7 @@ convolve_frequency(struct convolveparams *p)
   free (p->pimg);
   p->pimg = result;
 
-  if (p->makekernel) {
-    correctdeconvolve (p, &p->rpad);
-  } else {
-    p->rpad = gal_complex_to_real (p->pimg, total_size, COMPLEX_TO_REAL_REAL);
-  }
+  p->rpad = gal_complex_to_real (p->pimg, total_size, COMPLEX_TO_REAL_REAL);
 
   if(!p->cp.quiet)
     gal_timing_report(&t1, "Converted back to the spatial domain.", 1);
